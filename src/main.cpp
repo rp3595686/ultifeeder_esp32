@@ -9,9 +9,6 @@
 #include <ArduinoJson.h>
 #include "secrets.h"
 
-// To be included only in main(), .ino with setup() to avoid `Multiple Definitions` Linker Error
-#include <AsyncHTTPSRequest_Generic.h> // https://github.com/khoih-prog/AsyncHTTPSRequest_Generic
-
 #if !(defined(ESP8266) || defined(ESP32))
 #error This code is intended to run on the ESP8266 or ESP32 platform! Please check your Tools->Board setting.
 #endif
@@ -30,6 +27,9 @@
 
 #define _ASYNC_TCP_SSL_LOGLEVEL_ 1
 #define _ASYNC_HTTPS_LOGLEVEL_ 1
+
+// To be included only in main(), .ino with setup() to avoid `Multiple Definitions` Linker Error
+#include <AsyncHTTPSRequest_Generic.h> // https://github.com/khoih-prog/AsyncHTTPSRequest_Generic
 
 AsyncHTTPSRequest request;
 
