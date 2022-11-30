@@ -31,16 +31,41 @@
 // To be included only in main(), .ino with setup() to avoid `Multiple Definitions` Linker Error
 #include <AsyncHTTPSRequest_Generic.h> // https://github.com/khoih-prog/AsyncHTTPSRequest_Generic
 
-AsyncHTTPSRequest request;
-
-int status; // the Wifi radio's status
-
 // Use larger queue size if necessary for large data transfer. Default is 512 bytes if not defined here
 //#define ASYNC_QUEUE_LENGTH     512
 
 // Use larger priority if necessary. Default is 10 if not defined here. Must be > 4 or adjusted to 4
 //#define CONFIG_ASYNC_TCP_PRIORITY   (12)
 
+#define NUM_DIFFERENT_SITES     2
+
+const char* addreses[][NUM_DIFFERENT_SITES] =
+{
+	{firebase_url_temp},
+  {firebase_url_ph}
+	
+};
+
+#define NUM_ENTRIES_SITE_0        1
+#define NUM_ENTRIES_SITE_1        1
+
+byte reqCount[NUM_DIFFERENT_SITES]  = { NUM_ENTRIES_SITE_0, NUM_ENTRIES_SITE_1 };
+bool readySend[NUM_DIFFERENT_SITES] = { true, true };
+
+AsyncHTTPSRequest request[NUM_DIFFERENT_SITES];
+int status; // the Wifi radio's status
+
+void requestCB0(void* optParm, AsyncHTTPSRequest* thisRequest, int readyState);
+void requestCB1(void* optParm, AsyncHTTPSRequest* thisRequest, int readyState);
+
+void sendRequest0();
+void sendRequest1();
+
+typedef void (*requestCallback)(void* optParm, AsyncHTTPSRequest* thisRequest, int readyState);
+typedef void (*sendCallback)();
+
+requestCallback requestCB     [NUM_DIFFERENT_SITES] = { requestCB0,   requestCB1   };
+sendCallback    sendRequestCB [NUM_DIFFERENT_SITES] = { sendRequest0, sendRequest1 };
 
 //NTP settings
 const char *ntpServer1 = "ntp.np.edu.sg";
@@ -80,7 +105,7 @@ unsigned long sendMillis;
 
 unsigned long feedPeriod = 5000;  // the value is a number of milliseconds
 unsigned long motorPeriod = 1000; // the value is a number of milliseconds
-unsigned long tempPeriod = 10000; // the value is a number of milliseconds
+unsigned long tempPeriod = 13000; // the value is a number of milliseconds
 unsigned long phPeriod = 10000;   // the value is a number of milliseconds
 
 const int motor1pin1 = 33;
@@ -125,51 +150,90 @@ void showOnLcd()
   Gpu_Hal_WaitCmdfifo_empty(phost);
 }
 
-void sendRequest(String sendData)
+void sendRequest(uint16_t index)
 {
-  static bool requestOpenResult;
+	static bool requestOpenResult;
 
-  if (request.readyState() == readyStateUnsent || request.readyState() == readyStateDone)
-  {
-    // requestOpenResult = request.open("GET", "https://worldtimeapi.org/api/timezone/Europe/London.txt");
-    // requestOpenResult = request.open("GET", "https://worldtimeapi.org/api/timezone/America/Toronto.txt");
-    requestOpenResult = request.open("POST", firebase_url);
+	reqCount[index]--;
+	readySend[index] = false;
 
-    if (requestOpenResult)
-    {
-      // Only send() if open() returns true, or crash
-      // request.send("{\"testing\":\"true\"}");
-      request.send(sendData);
-    }
-    else
-    {
-      Serial.println(F("Can't send bad request"));
-    }
-  }
-  else
-  {
-    Serial.println(F("Can't send request"));
-  }
+	requestOpenResult = request[index].open("POST", addreses[index][reqCount[index]]);
+
+	if (requestOpenResult)
+	{
+		// Only send() if open() returns true, or crash
+		Serial.print("\nSending request: ");
+		request[index].send(sendJson);
+	}
+	else
+	{
+		Serial.print("\nCan't send bad request : ");
+	}
+
+	Serial.println(addreses[index][reqCount[index]]);
 }
 
-void requestCB(void *optParm, AsyncHTTPSRequest *request, int readyState)
+void sendRequest0()
 {
-  (void)optParm;
+	sendRequest(0);
+}
 
-  if (readyState == readyStateDone)
-  {
-    AHTTPS_LOGDEBUG0(F("\n**************************************\n"));
-    AHTTPS_LOGDEBUG1(F("Response Code = "), request->responseHTTPString());
+void sendRequest1()
+{
+	sendRequest(1);
+}
 
-    if (request->responseHTTPcode() == 200)
-    {
-      Serial.println(F("\n**************************************"));
-      Serial.println(request->responseText());
-      Serial.println(F("**************************************"));
-    }
+void sendRequests()
+{
+	for (int index = 0; index < NUM_DIFFERENT_SITES; index++)
+	{
+		reqCount[index] = 2;
+	}
 
-    request->setDebug(false);
-  }
+	reqCount[0] = NUM_ENTRIES_SITE_0;
+	reqCount[1] = NUM_ENTRIES_SITE_1;
+}
+
+void requestCB0(void *optParm, AsyncHTTPSRequest *thisRequest, int readyState)
+{
+	(void) optParm;
+
+	if (readyState == readyStateDone)
+	{
+		AHTTPS_LOGDEBUG0(F("\n**************************************\n"));
+		AHTTPS_LOGDEBUG1(F("Response Code = "), thisRequest->responseHTTPString());
+
+		if (thisRequest->responseHTTPcode() == 200)
+		{
+			Serial.println(F("\n**************************************"));
+			Serial.println(thisRequest->responseText());
+			Serial.println(F("**************************************"));
+		}
+
+		thisRequest->setDebug(false);
+		readySend[0] = true;
+	}
+}
+
+void requestCB1(void *optParm, AsyncHTTPSRequest *thisRequest, int readyState)
+{
+	(void) optParm;
+
+	if (readyState == readyStateDone)
+	{
+		AHTTPS_LOGDEBUG0(F("\n**************************************\n"));
+		AHTTPS_LOGDEBUG1(F("Response Code = "), thisRequest->responseHTTPString());
+
+		if (thisRequest->responseHTTPcode() == 200)
+		{
+			Serial.println(F("\n**************************************"));
+			Serial.println(thisRequest->responseText());
+			Serial.println(F("**************************************"));
+		}
+
+		thisRequest->setDebug(false);
+		readySend[1] = true;
+	}
 }
 
 String getTime()
@@ -218,44 +282,49 @@ void setup()
   /* Init HW Hal */
   App_Common_Init(&host);
 
-  Serial.print(F("\nStarting AsyncHTTPSRequest_ESP using "));
-  Serial.println(ARDUINO_BOARD);
+  
+	Serial.print("\nStarting AsyncHTTPSRequest_ESP_Multi on ");
+	Serial.println(ARDUINO_BOARD);
 
 #if defined(ESP32)
-  Serial.println(ASYNC_TCP_SSL_VERSION);
+	Serial.println(ASYNC_TCP_SSL_VERSION);
 #else
-  // Serial.println(ESPASYNC_TCP_SSL_VERSION);
+	//Serial.println(ESPASYNC_TCP_SSL_VERSION);
 #endif
 
-  Serial.println(ASYNC_HTTPS_REQUEST_GENERIC_VERSION);
+	Serial.println(ASYNC_HTTPS_REQUEST_GENERIC_VERSION);
 
 #if defined(ASYNC_HTTPS_REQUEST_GENERIC_VERSION_MIN)
-  if (ASYNC_HTTPS_REQUEST_GENERIC_VERSION_INT < ASYNC_HTTPS_REQUEST_GENERIC_VERSION_MIN)
-  {
-    Serial.print(F("Warning. Must use this example on Version equal or later than : "));
-    Serial.println(ASYNC_HTTPS_REQUEST_GENERIC_VERSION_MIN_TARGET);
-  }
+
+	if (ASYNC_HTTPS_REQUEST_GENERIC_VERSION_INT < ASYNC_HTTPS_REQUEST_GENERIC_VERSION_MIN)
+	{
+		Serial.print(F("Warning. Must use this example on Version equal or later than : "));
+		Serial.println(ASYNC_HTTPS_REQUEST_GENERIC_VERSION_MIN_TARGET);
+	}
+
 #endif
 
-  WiFi.mode(WIFI_STA);
+	WiFi.mode(WIFI_STA);
 
-  WiFi.begin(ssid, password);
+	WiFi.begin(ssid, password);
 
-  Serial.print(F("Connecting to WiFi SSID: "));
-  Serial.println(ssid);
+	Serial.println("Connecting to WiFi SSID: " + String(ssid));
 
-  while (WiFi.status() != WL_CONNECTED)
-  {
-    delay(500);
-    Serial.print(".");
-  }
+	while (WiFi.status() != WL_CONNECTED)
+	{
+		delay(500);
+		Serial.print(".");
+	}
 
-  Serial.print(F("\nAsyncHTTPSRequest @ IP : "));
-  Serial.println(WiFi.localIP());
+	Serial.print(F("\nAsyncHTTPSRequest @ IP : "));
+	Serial.println(WiFi.localIP());
 
-  request.setDebug(false);
+	for (int index = 0; index < NUM_DIFFERENT_SITES; index++)
+	{
+		request[index].setDebug(false);
 
-  request.onReadyStateChange(requestCB);
+		request[index].onReadyStateChange(requestCB[index]);
+	}
 
   configTime(gmtOffset_sec, daylightOffset_sec, ntpServer1);
 }
@@ -279,7 +348,11 @@ void loop()
     Doc["time"] = getTime();
     Doc["value"] = temperature;
     serializeJson(Doc, sendJson);
-    sendRequest(sendJson);
+    if (readySend[0])
+		{
+      reqCount[0] = NUM_ENTRIES_SITE_0;
+			sendRequestCB[0]();
+		}
   }
   if (phMillis - Ph_startMillis >= phPeriod)
   {
@@ -293,6 +366,23 @@ void loop()
     Serial.println(phValue, 4);
     Ph_startMillis = phMillis;
     showOnLcd();
+    sendJson = ""; // clear string
+    Doc.clear();   // release memory used by JsonObject
+    Doc["time"] = getTime();
+    Doc["value"] = phValue;
+    serializeJson(Doc, sendJson);
+    Serial.println(reqCount[1]);
+    if (readySend[1])
+		{
+      reqCount[1] = NUM_ENTRIES_SITE_1;
+			sendRequestCB[1]();
+		}
+    /*Serial.println(reqCount[1]);
+    Serial.println(readySend[1]);
+    if ((reqCount[1] > 0) && readySend[1])
+		{
+			sendRequestCB[1]();
+		}*/
   }
   if ((currentMillis - startMillis >= feedPeriod) && flag == true && Mode == 1)
   {
