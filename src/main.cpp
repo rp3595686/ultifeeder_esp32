@@ -273,10 +273,10 @@ void setup()
   analogWrite(32, 255); // ENA pin`
 
   EEPROM.begin(32); // needed EEPROM.begin to store calibration k in eeprom
-  ph.begin();
-  sensors.begin();
-  ads.setGain(GAIN_ONE);
-  ads.begin();
+  //ph.begin();
+  //sensors.begin();
+  //ads.setGain(GAIN_ONE);
+  //ads.begin();
 
   phost = &host;
   /* Init HW Hal */
@@ -327,6 +327,7 @@ void setup()
 	}
 
   configTime(gmtOffset_sec, daylightOffset_sec, ntpServer1);
+  //Serial.println(getChipId());
 }
 
 void loop()
@@ -337,7 +338,8 @@ void loop()
 
   if (tempMillis - Temp_startMillis >= tempPeriod)
   {
-    temperature = readTemperature(); // read your temperature sensor to execute temperature compensation
+    temperature = random(24,27);
+    //temperature = readTemperature(); // read your temperature sensor to execute temperature compensation
     Serial.print("Temperature:");
     Serial.print(temperature, 1);
     Serial.println("^C");
@@ -361,7 +363,8 @@ void loop()
     // Serial.println(voltage);
     // phValue = ph.readPH(voltage, temperature);  // convert voltage to pH with temperature compensation
     // phValue = random(10);
-    phValue = map(analogRead(PH_PIN), 0, 4096, 0, 14);
+    //phValue = map(analogRead(PH_PIN), 0, 4096, 0, 14);
+    phValue = random(6,8);
     Serial.print("pH:");
     Serial.println(phValue, 4);
     Ph_startMillis = phMillis;
