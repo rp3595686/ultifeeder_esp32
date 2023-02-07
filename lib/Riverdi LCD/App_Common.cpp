@@ -785,13 +785,18 @@ void App_Common_Init(Gpu_Hal_Context_t *phost)
 
   /* read Register ID to check if chip ID series is correct */
   chipid = Gpu_Hal_Rd8(phost, REG_ID);
-  //Serial.println(phost);
-  Serial.println(REG_ID);
-  Serial.println(chipid);
-  while (chipid != 0x7C)
+
+  int msleep;
+  int timeout = 5000; // 5 seconds timeout
+  while (chipid != 0x7C) // while LCD not found
   {
-    chipid = Gpu_Hal_Rd8(phost, REG_ID);
     Gpu_Hal_Sleep(100);
+    msleep = msleep + 100; // increment by 100ms
+    chipid = Gpu_Hal_Rd8(phost, REG_ID); // read Register ID again
+    if (msleep >= timeout && chipid != 0x7C){ // check timeout and whether LCD exist
+      Serial.print("LCD not detected!");
+      break;
+    }
   }
 
   /* read REG_CPURESET to confirm 0 is returned */
