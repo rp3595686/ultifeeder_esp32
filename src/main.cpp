@@ -101,22 +101,30 @@ unsigned long startMillis; // some global variables available anywhere in the pr
 unsigned long Temp_startMillis;
 unsigned long Ph_startMillis;
 unsigned long Send_startMillis;
+unsigned long IR_startMillis;
 unsigned long currentMillis;
 unsigned long tempMillis;
 unsigned long phMillis;
 unsigned long sendMillis;
+unsigned long IRdetectMillis;
 
 unsigned long feedPeriod = 5000;  // the value is a number of milliseconds
 unsigned long motorPeriod = 1000; // the value is a number of milliseconds
 unsigned long tempPeriod = 13000; // the value is a number of milliseconds
 unsigned long phPeriod = 10000;   // the value is a number of milliseconds
+unsigned long IRdetectPeriod = 1000;   // the value is a number of milliseconds
 
 const int motor1pin1 = 33;
 const int motor1pin2 = 25;
-const int IRpin = 13;
+const int topIRpin = 13;
+
+int noFoodCount = 0;
+
+
 bool flag = true;
-int Count;
-int Mode = 1;
+unsigned long Count;
+int isDrop = 1;
+int isFoodLeft = 0;
 
 //Time settings
 struct tm timeinfo;
@@ -133,10 +141,11 @@ float readTemperature()
   return sensors.getTempCByIndex(0);
 }
 
-void IRAM_ATTR IRsensor()
+void IRAM_ATTR IRsensor_top()
 {
+  //Serial.print("LOW");
   Count++;
-  Mode = 1;
+  isFoodLeft = 0; // food not detected
 }
 
 void showOnLcd()
@@ -259,7 +268,7 @@ void setup()
 
   Serial.begin(115200);
 
-  attachInterrupt(13, IRsensor, FALLING);
+  attachInterrupt(topIRpin, IRsensor_top, FALLING);
   startMillis = millis();      // initial start time
   Temp_startMillis = millis(); // initial start time
 
@@ -268,7 +277,7 @@ void setup()
   myservo.attach(motor1pin1);
   pinMode(32, OUTPUT);
   pinMode(LEDR, OUTPUT);
-  pinMode(IRpin, INPUT);
+  pinMode(topIRpin, INPUT);
 
   // Controlling spin direction of motors:
   digitalWrite(motor1pin1, HIGH);
@@ -337,6 +346,7 @@ void loop()
   currentMillis = millis();
   tempMillis = millis();
   phMillis = millis();
+  IRdetectMillis = millis();
 
   if (tempMillis - Temp_startMillis >= tempPeriod)
   {
@@ -387,7 +397,31 @@ void loop()
 			sendRequestCB[1]();
 		}*/
   }
-  if ((currentMillis - startMillis >= feedPeriod) && flag == true && Mode == 1)
+  /*if (((currentMillis - startMillis) >= feedPeriod) && isFoodLeft = 1 && isStuck = 0) { // feeding time reached, feed left, is not stuck
+    myservo.write(0); // motor turns
+  }*/
+  
+  // Check food left
+  isFoodLeft = digitalRead(topIRpin); // 1 = no food detected, 0 = food detected
+  
+  if(!isFoodLeft) { // food detected
+    noFoodCount = 0;
+  }
+
+  if (IRdetectMillis - IR_startMillis >= IRdetectPeriod){ // detect at 1 second interval
+    if (isFoodLeft) { // if no food left
+    noFoodCount++; // start counter
+    }
+    IR_startMillis = IRdetectMillis;
+  }
+  if (noFoodCount >= 5) { // more than 5 sec of no food detected
+    Serial.println("No Food!!!!!!!!"); // Alert user
+    noFoodCount = 0; // reset counter
+  }
+
+
+  
+  /*if ((currentMillis - startMillis >= feedPeriod) && flag == true && Mode == 1)
   {
     //digitalWrite(motor1pin2, LOW);
     myservo.write(60); 
@@ -413,5 +447,6 @@ void loop()
     digitalWrite(LEDR, HIGH);
     //digitalWrite(motor1pin2, HIGH);
     myservo.write(0);   
-  }
+  }*/
 }
+unsigned long foodLeft_timeout = 5000;
