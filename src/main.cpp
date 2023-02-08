@@ -8,6 +8,9 @@
 #include "App_Common.h"
 #include <ArduinoJson.h>
 #include "secrets.h"
+#include <Servo.h>
+
+Servo myservo;
 
 #if !(defined(ESP8266) || defined(ESP32))
 #error This code is intended to run on the ESP8266 or ESP32 platform! Please check your Tools->Board setting.
@@ -260,9 +263,9 @@ void setup()
   startMillis = millis();      // initial start time
   Temp_startMillis = millis(); // initial start time
 
-  pinMode(motor1pin1, OUTPUT);
+  //pinMode(motor1pin1, OUTPUT);
   pinMode(motor1pin2, OUTPUT);
-
+  myservo.attach(motor1pin1);
   pinMode(32, OUTPUT);
   pinMode(LEDR, OUTPUT);
   pinMode(IRpin, INPUT);
@@ -386,14 +389,16 @@ void loop()
   }
   if ((currentMillis - startMillis >= feedPeriod) && flag == true && Mode == 1)
   {
-    digitalWrite(motor1pin2, LOW);
+    //digitalWrite(motor1pin2, LOW);
+    myservo.write(60); 
     digitalWrite(LEDR, LOW);
     flag = false;
     startMillis = currentMillis;
   }
   else if ((currentMillis - startMillis >= motorPeriod) && flag == false && Mode == 1)
   {
-    digitalWrite(motor1pin2, HIGH);
+    //digitalWrite(motor1pin2, HIGH);
+    myservo.write(0);      
     flag = true;
     startMillis = currentMillis;
 
@@ -406,6 +411,7 @@ void loop()
   else if (Mode == 0)
   {
     digitalWrite(LEDR, HIGH);
-    digitalWrite(motor1pin2, HIGH);
+    //digitalWrite(motor1pin2, HIGH);
+    myservo.write(0);   
   }
 }
