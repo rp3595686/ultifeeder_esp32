@@ -105,8 +105,8 @@ unsigned long sendMillis;
 
 unsigned long feedPeriod = 5000;  // the value is a number of milliseconds
 unsigned long motorPeriod = 1000; // the value is a number of milliseconds
-unsigned long tempPeriod = 13000; // the value is a number of milliseconds
-unsigned long phPeriod = 10000;   // the value is a number of milliseconds
+unsigned long tempPeriod = 2000; // the value is a number of milliseconds
+unsigned long phPeriod = 2000;   // the value is a number of milliseconds
 
 const int motor1pin1 = 33;
 const int motor1pin2 = 25;
@@ -387,7 +387,9 @@ void loop()
 			sendRequestCB[1]();
 		}*/
   }
-  if ((currentMillis - startMillis >= feedPeriod) && flag == true && Mode == 1)
+  
+  
+  /*if ((currentMillis - startMillis >= feedPeriod) && flag == true && Mode == 1)
   {
     digitalWrite(motor1pin2, LOW);
     digitalWrite(LEDR, LOW);
@@ -410,5 +412,6 @@ void loop()
   {
     digitalWrite(LEDR, HIGH);
     digitalWrite(motor1pin2, HIGH);
-  }
+  }*/
+  digitalWrite(motor1pin2,LOW);
 }
