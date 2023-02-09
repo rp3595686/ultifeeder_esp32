@@ -71,6 +71,8 @@ requestCallback requestCB     [NUM_DIFFERENT_SITES] = { requestCB0,   requestCB1
 sendCallback    sendRequestCB [NUM_DIFFERENT_SITES] = { sendRequest0, sendRequest1 };
 
 //NTP settings
+const char *ntpServers[] = {"ntp.np.edu.sg", "pool.ntp.org","sg.pool.ntp.org","time.google.com","time.cloudflare.com"};
+int ntpArraySize = sizeof(ntpServers) / sizeof(ntpServers[0]);
 const char *ntpServer1 = "ntp.np.edu.sg";
 const char *ntpServer2 = "pool.ntp.org";
 const long gmtOffset_sec = 28800;
@@ -135,6 +137,7 @@ int isFoodStuck = 0;
 //Time settings
 struct tm timeinfo;
 char strTime[51];
+bool getTimeFailed = false;
 
 //JSON settings
 StaticJsonDocument<192> Doc;
@@ -345,7 +348,22 @@ void setup()
 		request[index].onReadyStateChange(requestCB[index]);
 	}
 
-  configTime(gmtOffset_sec, daylightOffset_sec, ntpServer1);
+  //Setting up NTP
+  int ntpArrayIndex = 0;
+  String strTime = "Failed to obtain time"; // default string
+  while (strTime == "Failed to obtain time") {
+    configTime(gmtOffset_sec, daylightOffset_sec, ntpServers[ntpArrayIndex]);
+    strTime = getTime();
+    if (strTime == "Failed to obtain time"){
+      Serial.print("Failed to obtain time from ");
+      Serial.println(ntpServers[ntpArrayIndex]);
+      ntpArrayIndex++;
+    }
+    if(ntpArrayIndex > ntpArraySize - 1) {
+      Serial.println("Failed to obtain time from all NTP Severs configured.");
+      getTimeFailed = true;
+    }
+  }
 }
 
 void loop()
@@ -369,7 +387,7 @@ void loop()
     Doc["time"] = getTime();
     Doc["value"] = temperature;
     serializeJson(Doc, sendJson);
-    if (readySend[0])
+    if (readySend[0] && getTimeFailed) // ready to send and time is configured correctly
 		{
       reqCount[0] = NUM_ENTRIES_SITE_0;
 			sendRequestCB[0]();
@@ -393,7 +411,7 @@ void loop()
     Doc["value"] = phValue;
     serializeJson(Doc, sendJson);
     Serial.println(reqCount[1]);
-    if (readySend[1])
+    if (readySend[1] && getTimeFailed) // ready to send and time is configured correctly
 		{
       reqCount[1] = NUM_ENTRIES_SITE_1;
 			sendRequestCB[1]();
