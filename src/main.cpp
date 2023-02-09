@@ -82,7 +82,7 @@ OneWire oneWire(ONE_WIRE_BUS);
 DallasTemperature sensors(&oneWire);
 
 
-
+#define ESP_getChipId()   (ESP.getChipId())
 #define LEDR 4 // Red LED ESP32 Pin 22
 
 //ph sensor settings
@@ -430,5 +430,5 @@ void loop()
     digitalWrite(LEDR, HIGH);
     //digitalWrite(motor1pin2, HIGH);
     myservo.write(0);   
-  }
+  }*/
 }
