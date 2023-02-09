@@ -102,21 +102,25 @@ unsigned long Temp_startMillis;
 unsigned long Ph_startMillis;
 unsigned long Send_startMillis;
 unsigned long IR_startMillis;
+unsigned long foodStuck_startMillis;
 unsigned long currentMillis;
 unsigned long tempMillis;
 unsigned long phMillis;
 unsigned long sendMillis;
 unsigned long IRdetectMillis;
+unsigned long foodStuckMillis;
 
 unsigned long feedPeriod = 5000;  // the value is a number of milliseconds
 unsigned long motorPeriod = 1000; // the value is a number of milliseconds
 unsigned long tempPeriod = 13000; // the value is a number of milliseconds
 unsigned long phPeriod = 10000;   // the value is a number of milliseconds
 unsigned long IRdetectPeriod = 1000;   // the value is a number of milliseconds
+unsigned long foodStuckdetectPeriod = 5000;   // the value is a number of milliseconds
 
 const int motor1pin1 = 33;
 const int motor1pin2 = 25;
 const int topIRpin = 13;
+const int buttomIRpin = 12;
 
 int noFoodCount = 0;
 
@@ -125,6 +129,8 @@ bool flag = true;
 unsigned long Count;
 int isDrop = 1;
 int isFoodLeft = 0;
+int detectFoodStuck_Start = 0;
+int isFoodStuck = 0;
 
 //Time settings
 struct tm timeinfo;
@@ -278,6 +284,7 @@ void setup()
   pinMode(32, OUTPUT);
   pinMode(LEDR, OUTPUT);
   pinMode(topIRpin, INPUT);
+  pinMode(buttomIRpin, INPUT);
 
   // Controlling spin direction of motors:
   digitalWrite(motor1pin1, HIGH);
@@ -347,6 +354,7 @@ void loop()
   tempMillis = millis();
   phMillis = millis();
   IRdetectMillis = millis();
+  foodStuckMillis = millis();
 
   if (tempMillis - Temp_startMillis >= tempPeriod)
   {
@@ -419,6 +427,24 @@ void loop()
     noFoodCount = 0; // reset counter
   }
 
+  if (currentMillis - startMillis >= feedPeriod){
+    //turn motor
+    detectFoodStuck_Start = 1;
+    foodStuck_startMillis = millis();
+  }
+  if (detectFoodStuck_Start){
+    isFoodStuck = digitalRead(buttomIRpin); // 1 = stuck, 0 = not stuck
+    if (isFoodStuck) {
+      //alert user
+      detectFoodStuck_Start = 0; // reset detection status
+    } else {
+      if (foodStuckMillis - foodStuck_startMillis <= foodStuckdetectPeriod) { // detect for 5 second
+      isFoodStuck = digitalRead(buttomIRpin); // 1 = stuck, 0 = not stuck
+      } else { // 5 sec passede
+        detectFoodStuck_Start = 0; // reset detection status
+      }
+    }
+  }
 
   
   /*if ((currentMillis - startMillis >= feedPeriod) && flag == true && Mode == 1)
