@@ -329,7 +329,23 @@ void setup()
 		request[index].onReadyStateChange(requestCB[index]);
 	}
 
-  configTime(gmtOffset_sec, daylightOffset_sec, ntpServer1);
+  //Setting up NTP
+  int ntpArrayIndex = 0;
+  String strTime = "Failed to obtain time"; // default string
+  while (strTime == "Failed to obtain time") {
+    configTime(gmtOffset_sec, daylightOffset_sec, ntpServers[ntpArrayIndex]);
+    strTime = getTime();
+    if (strTime == "Failed to obtain time"){
+      Serial.print("Failed to obtain time from ");
+      Serial.println(ntpServers[ntpArrayIndex]);
+      ntpArrayIndex++;
+    }
+    if(ntpArrayIndex > ntpArraySize - 1) {
+      Serial.println("Failed to obtain time from all NTP Severs configured.");
+      Serial.println("Data will not be sent to database.");
+      getTimeFailed = true;
+    }
+  }
 }
 
 void loop()
@@ -387,6 +403,7 @@ void loop()
 			sendRequestCB[1]();
 		}*/
   }
+  /*
   if ((currentMillis - startMillis >= feedPeriod) && flag == true && Mode == 1)
   {
     //digitalWrite(motor1pin2, LOW);
