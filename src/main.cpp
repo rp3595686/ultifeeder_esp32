@@ -365,7 +365,7 @@ void loop()
     Doc["time"] = getTime();
     Doc["value"] = temperature;
     serializeJson(Doc, sendJson);
-    if (readySend[0] && getTimeFailed) // ready to send and time is configured correctly
+    if (readySend[0] && !getTimeFailed) // ready to send and time is configured correctly
 		{
       reqCount[0] = NUM_ENTRIES_SITE_0;
 			sendRequestCB[0]();
@@ -389,7 +389,7 @@ void loop()
     Doc["value"] = phValue;
     serializeJson(Doc, sendJson);
     Serial.println(reqCount[1]);
-    if (readySend[1] && getTimeFailed) // ready to send and time is configured correctly
+    if (readySend[1] && !getTimeFailed) // ready to send and time is configured correctly
 		{
       reqCount[1] = NUM_ENTRIES_SITE_1;
 			sendRequestCB[1]();
