@@ -73,8 +73,6 @@ sendCallback    sendRequestCB [NUM_DIFFERENT_SITES] = { sendRequest0, sendReques
 //NTP settings
 const char *ntpServers[] = {"ntp.np.edu.sg", "pool.ntp.org","sg.pool.ntp.org","time.google.com","time.cloudflare.com"};
 int ntpArraySize = sizeof(ntpServers) / sizeof(ntpServers[0]);
-const char *ntpServer1 = "ntp.np.edu.sg";
-const char *ntpServer2 = "pool.ntp.org";
 const long gmtOffset_sec = 28800;
 const int daylightOffset_sec = 0;
 
@@ -82,6 +80,8 @@ const int daylightOffset_sec = 0;
 #define ONE_WIRE_BUS 15
 OneWire oneWire(ONE_WIRE_BUS);
 DallasTemperature sensors(&oneWire);
+
+
 
 #define LEDR 4 // Red LED ESP32 Pin 22
 
@@ -96,43 +96,20 @@ Adafruit_ADS1115 ads;
 /* Global used for buffer optimization */
 Gpu_Hal_Context_t host, *phost;
 
-float voltage, phValue, temperature = 25;
-
 // Millis for non-blocking
-unsigned long startMillis; // some global variables available anywhere in the program
-unsigned long Temp_startMillis;
-unsigned long Ph_startMillis;
-unsigned long Send_startMillis;
-unsigned long IR_startMillis;
-unsigned long foodStuck_startMillis;
 unsigned long currentMillis;
-unsigned long tempMillis;
-unsigned long phMillis;
-unsigned long sendMillis;
-unsigned long IRdetectMillis;
-unsigned long foodStuckMillis;
+unsigned long foodFeed_startMillis;
+unsigned long readTemp_startMillis;
+unsigned long readPh_startMillis;
+unsigned long noFoodDetect_startMillis;
+unsigned long foodStuckDetect_startMillis;
 
-unsigned long feedPeriod = 5000;  // the value is a number of milliseconds
-unsigned long motorPeriod = 1000; // the value is a number of milliseconds
-unsigned long tempPeriod = 13000; // the value is a number of milliseconds
-unsigned long phPeriod = 10000;   // the value is a number of milliseconds
-unsigned long IRdetectPeriod = 1000;   // the value is a number of milliseconds
-unsigned long foodStuckdetectPeriod = 5000;   // the value is a number of milliseconds
-
-const int motor1pin1 = 33;
-const int motor1pin2 = 25;
-const int topIRpin = 13;
-const int buttomIRpin = 12;
-
-int noFoodCount = 0;
-
-
-bool flag = true;
-unsigned long Count;
-int isDrop = 1;
-int isFoodLeft = 0;
-int detectFoodStuck_Start = 0;
-int isFoodStuck = 0;
+// Period Config
+unsigned long foodFeedPeriod = 10000;  // the value is a number of milliseconds
+unsigned long readTempPeriod = 13000; // the value is a number of milliseconds
+unsigned long readPhPeriod = 10000;   // the value is a number of milliseconds
+unsigned long noFoodDetectPeriod = 1000;   // the value is a number of milliseconds
+unsigned long foodStuckDetectPeriod = 5000;   // the value is a number of milliseconds
 
 //Time settings
 struct tm timeinfo;
@@ -143,18 +120,24 @@ bool getTimeFailed = false;
 StaticJsonDocument<192> Doc;
 String sendJson;
 
+// Used variable
+float voltage, phValue, temperature = 25;
+int noFoodCount = 0;
+bool isFoodLeft = false;
+bool isFoodStuckDetectStart = false;
+bool isFoodStuck = false;
+
+// Pins
+const int motor1pin1 = 33;
+const int motor1pin2 = 25;
+const int topIRpin = 13;
+const int buttomIRpin = 12;
+
 float readTemperature()
 {
   // add your code here to get the temperature from your temperature sensor
   sensors.requestTemperatures();
   return sensors.getTempCByIndex(0);
-}
-
-void IRAM_ATTR IRsensor_top()
-{
-  //Serial.print("LOW");
-  Count++;
-  isFoodLeft = 0; // food not detected
 }
 
 void showOnLcd()
@@ -274,12 +257,10 @@ String getTime()
 
 void setup()
 {
-
   Serial.begin(115200);
 
-  attachInterrupt(topIRpin, IRsensor_top, FALLING);
-  startMillis = millis();      // initial start time
-  Temp_startMillis = millis(); // initial start time
+  foodFeed_startMillis = millis();      // initial start time
+  readTemp_startMillis = millis(); // initial start time
 
   //pinMode(motor1pin1, OUTPUT);
   pinMode(motor1pin2, OUTPUT);
@@ -361,6 +342,7 @@ void setup()
     }
     if(ntpArrayIndex > ntpArraySize - 1) {
       Serial.println("Failed to obtain time from all NTP Severs configured.");
+      Serial.println("Data will not be sent to database.");
       getTimeFailed = true;
     }
   }
@@ -369,18 +351,14 @@ void setup()
 void loop()
 {
   currentMillis = millis();
-  tempMillis = millis();
-  phMillis = millis();
-  IRdetectMillis = millis();
-  foodStuckMillis = millis();
 
-  if (tempMillis - Temp_startMillis >= tempPeriod)
+  if (currentMillis - readTemp_startMillis >= readTempPeriod)
   {
     temperature = readTemperature(); // read your temperature sensor to execute temperature compensation
     Serial.print("Temperature:");
     Serial.print(temperature, 1);
     Serial.println("^C");
-    Temp_startMillis = tempMillis;
+    readTemp_startMillis = currentMillis;
     showOnLcd();
     sendJson = ""; // clear string
     Doc.clear();   // release memory used by JsonObject
@@ -393,7 +371,7 @@ void loop()
 			sendRequestCB[0]();
 		}
   }
-  if (phMillis - Ph_startMillis >= phPeriod)
+  if (currentMillis - readPh_startMillis >= readPhPeriod)
   {
     // temperature = readTemperature();                     //needed for temperature compensation below
     // voltage = analogRead(PH_PIN) / ESPADC * ESPVOLTAGE;  // read the voltage
@@ -403,7 +381,7 @@ void loop()
     phValue = map(analogRead(PH_PIN), 0, 4096, 0, 14);
     Serial.print("pH:");
     Serial.println(phValue, 4);
-    Ph_startMillis = phMillis;
+    readPh_startMillis = currentMillis;
     showOnLcd();
     sendJson = ""; // clear string
     Doc.clear();   // release memory used by JsonObject
@@ -423,9 +401,6 @@ void loop()
 			sendRequestCB[1]();
 		}*/
   }
-  /*if (((currentMillis - startMillis) >= feedPeriod) && isFoodLeft = 1 && isStuck = 0) { // feeding time reached, feed left, is not stuck
-    myservo.write(0); // motor turns
-  }*/
   
   // Check food left
   isFoodLeft = digitalRead(topIRpin); // 1 = no food detected, 0 = food detected
@@ -433,52 +408,56 @@ void loop()
   if(!isFoodLeft) { // food detected
     noFoodCount = 0;
   }
-
-  if (IRdetectMillis - IR_startMillis >= IRdetectPeriod){ // detect at 1 second interval
+  if (currentMillis - noFoodDetect_startMillis >= noFoodDetectPeriod){ // detect at 1 second interval
     if (isFoodLeft) { // if no food left
     noFoodCount++; // start counter
     }
-    IR_startMillis = IRdetectMillis;
+    noFoodDetect_startMillis = currentMillis;
   }
   if (noFoodCount >= 5) { // more than 5 sec of no food detected
     Serial.println("No Food!!!!!!!!"); // Alert user
     noFoodCount = 0; // reset counter
   }
 
-  if (currentMillis - startMillis >= feedPeriod){
+  // Feed food
+  if (currentMillis - foodFeed_startMillis >= foodFeedPeriod){
     //turn motor
-    detectFoodStuck_Start = 1;
-    foodStuck_startMillis = millis();
+    //digitalWrite(motor1pin2, HIGH);
+    //myservo.write(0);   
+    Serial.println("Motor Turn!");
+    foodFeed_startMillis = currentMillis;
+    foodStuckDetect_startMillis = currentMillis;
+    isFoodStuckDetectStart = true;
   }
-  if (detectFoodStuck_Start){
+  if (isFoodStuckDetectStart){
     isFoodStuck = digitalRead(buttomIRpin); // 1 = stuck, 0 = not stuck
     if (isFoodStuck) {
-      //alert user
-      detectFoodStuck_Start = 0; // reset detection status
+      Serial.println("Food Stuck!!!!!!!!"); // Alert user
+      isFoodStuckDetectStart = false; // reset detection status
     } else {
-      if (foodStuckMillis - foodStuck_startMillis <= foodStuckdetectPeriod) { // detect for 5 second
+      if (currentMillis - foodStuckDetect_startMillis <= foodStuckDetectPeriod) { // constantly detecting for 5 second
       isFoodStuck = digitalRead(buttomIRpin); // 1 = stuck, 0 = not stuck
-      } else { // 5 sec passede
-        detectFoodStuck_Start = 0; // reset detection status
+      } else { // 5 sec passed
+        isFoodStuckDetectStart = false; // reset detection status
       }
     }
   }
 
   
-  /*if ((currentMillis - startMillis >= feedPeriod) && flag == true && Mode == 1)
+  /*if ((currentMillis - foodFeed_startMillis >= foodFeedPeriod) && flag == true && Mode == 1)
   {
     //digitalWrite(motor1pin2, LOW);
     myservo.write(60); 
     digitalWrite(LEDR, LOW);
     flag = false;
-    startMillis = currentMillis;
+    foodFeed_startMillis = currentMillis;
   }
-  else if ((currentMillis - startMillis >= motorPeriod) && flag == false && Mode == 1)
+  else if ((currentMillis - foodFeed_startMillis >= motorPeriod) && flag == false && Mode == 1)
   {
     //digitalWrite(motor1pin2, HIGH);
     myservo.write(0);      
     flag = true;
-    startMillis = currentMillis;
+    foodFeed_startMillis = currentMillis;
 
     if (Count == 0)
       Mode = 0;
@@ -489,8 +468,6 @@ void loop()
   else if (Mode == 0)
   {
     digitalWrite(LEDR, HIGH);
-    //digitalWrite(motor1pin2, HIGH);
-    myservo.write(0);   
+   
   }*/
 }
-unsigned long foodLeft_timeout = 5000;
