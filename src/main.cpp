@@ -42,11 +42,21 @@ Servo myservo;
 
 #define NUM_DIFFERENT_SITES     2
 
+// Get Unique ID
+String chipID = String(ESP.getEfuseMac(), HEX);
+
+// Setup urls required
+String strFirebase_url_ph = strFirebase_url + dataStoragePath + chipID + phDataPath +".json";
+String strFirebase_url_temp = strFirebase_url + dataStoragePath + chipID + tempDataPath + ".json";
+
+// Convert from String to const char*
+const char*  firebase_url_ph = strFirebase_url_ph.c_str();
+const char* firebase_url_temp = strFirebase_url_temp.c_str();
+
 const char* addreses[][NUM_DIFFERENT_SITES] =
 {
-	{firebase_url_temp},
-  {firebase_url_ph}
-	
+	{firebase_url_ph},
+  {firebase_url_temp}
 };
 
 #define NUM_ENTRIES_SITE_0        1
@@ -81,8 +91,6 @@ const int daylightOffset_sec = 0;
 OneWire oneWire(ONE_WIRE_BUS);
 DallasTemperature sensors(&oneWire);
 
-
-#define ESP_getChipId()   (ESP.getChipId())
 #define LEDR 4 // Red LED ESP32 Pin 22
 
 //ph sensor settings
@@ -160,6 +168,8 @@ void sendRequest(uint16_t index)
 
 	reqCount[index]--;
 	readySend[index] = false;
+  Serial.print("Request::");
+  Serial.println(index);
 
 	requestOpenResult = request[index].open("POST", addreses[index][reqCount[index]]);
 
@@ -262,9 +272,9 @@ void setup()
   foodFeed_startMillis = millis();      // initial start time
   readTemp_startMillis = millis(); // initial start time
 
-  //pinMode(motor1pin1, OUTPUT);
+  pinMode(motor1pin1, OUTPUT);
   pinMode(motor1pin2, OUTPUT);
-  myservo.attach(motor1pin1);
+  //myservo.attach(motor1pin1);
   pinMode(32, OUTPUT);
   pinMode(LEDR, OUTPUT);
   pinMode(topIRpin, INPUT);
@@ -281,6 +291,7 @@ void setup()
   //ads.setGain(GAIN_ONE);
   //ads.begin();
 
+  // LCD Setup
   phost = &host;
   /* Init HW Hal */
   App_Common_Init(&host);
@@ -352,27 +363,7 @@ void loop()
 {
   currentMillis = millis();
 
-  if (currentMillis - readTemp_startMillis >= readTempPeriod)
-  {
-    temperature = random(24,27);
-    //temperature = readTemperature(); // read your temperature sensor to execute temperature compensation
-    Serial.print("Temperature:");
-    Serial.print(temperature, 1);
-    Serial.println("^C");
-    readTemp_startMillis = currentMillis;
-    showOnLcd();
-    sendJson = ""; // clear string
-    Doc.clear();   // release memory used by JsonObject
-    Doc["time"] = getTime();
-    Doc["value"] = temperature;
-    serializeJson(Doc, sendJson);
-    if (readySend[0] && !getTimeFailed) // ready to send and time is configured correctly
-		{
-      reqCount[0] = NUM_ENTRIES_SITE_0;
-			sendRequestCB[0]();
-		}
-  }
-  if (currentMillis - readPh_startMillis >= readPhPeriod)
+   if (currentMillis - readPh_startMillis >= readPhPeriod)
   {
     // temperature = readTemperature();                     //needed for temperature compensation below
     // voltage = analogRead(PH_PIN) / ESPADC * ESPVOLTAGE;  // read the voltage
@@ -390,18 +381,32 @@ void loop()
     Doc["time"] = getTime();
     Doc["value"] = phValue;
     serializeJson(Doc, sendJson);
-    Serial.println(reqCount[1]);
+    if (readySend[0] && !getTimeFailed) // ready to send and time is configured correctly
+		{
+      reqCount[0] = NUM_ENTRIES_SITE_0;
+			sendRequestCB[0]();
+		}
+  }
+
+  if (currentMillis - readTemp_startMillis >= readTempPeriod)
+  {
+    temperature = random(24,27);
+    //temperature = readTemperature(); // read your temperature sensor to execute temperature compensation
+    Serial.print("Temperature:");
+    Serial.print(temperature, 1);
+    Serial.println("^C");
+    readTemp_startMillis = currentMillis;
+    showOnLcd();
+    sendJson = ""; // clear string
+    Doc.clear();   // release memory used by JsonObject
+    Doc["time"] = getTime();
+    Doc["value"] = temperature;
+    serializeJson(Doc, sendJson);
     if (readySend[1] && !getTimeFailed) // ready to send and time is configured correctly
 		{
       reqCount[1] = NUM_ENTRIES_SITE_1;
 			sendRequestCB[1]();
 		}
-    /*Serial.println(reqCount[1]);
-    Serial.println(readySend[1]);
-    if ((reqCount[1] > 0) && readySend[1])
-		{
-			sendRequestCB[1]();
-		}*/
   }
   /*
   if ((currentMillis - startMillis >= feedPeriod) && flag == true && Mode == 1)
