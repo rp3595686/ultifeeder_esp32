@@ -8,9 +8,7 @@
 #include "App_Common.h"
 #include <ArduinoJson.h>
 #include "secrets.h"
-#include <Servo.h>
 
-Servo myservo;
 
 #if !( defined(ESP8266) ||  defined(ESP32) )
   #error This code is intended to run on the ESP8266 or ESP32 platform! Please check your Tools->Board setting.
@@ -101,13 +99,6 @@ String chipID = String(ESP.getEfuseMac(), HEX);
     #define FS_Name       "FFat"
   #endif
   //////
-
-  #if !defined(LED_BUILTIN)
-    #define LED_BUILTIN       2
-  #endif
-
-  #define LED_ON            HIGH
-  #define LED_OFF           LOW
 
 #else
 
@@ -330,7 +321,7 @@ char blynk_token  [BLYNK_TOKEN_LEN]         = "YOUR_BLYNK_TOKEN";
 
 char mqtt_server  [MQTT_SERVER_MAX_LEN];
 char mqtt_port    [MQTT_SERVER_PORT_LEN]    = "8080";
-char feedInterval [FEED_INTERVAL_LEN]       = "5000";
+char feedInterval [FEED_INTERVAL_LEN]       = "20000";
 
 #include <AsyncHTTPSRequest_Generic.h>             // https://github.com/khoih-prog/AsyncHTTPRequest_Generic
 
@@ -438,14 +429,16 @@ unsigned long readTemp_startMillis;
 unsigned long readPh_startMillis;
 unsigned long noFoodDetect_startMillis;
 unsigned long foodStuckDetect_startMillis;
+unsigned long motorTurning_startMillis;
 
 // Period Config
 //unsigned long feedInterval = 10000;  // the value is a number of milliseconds
 unsigned long fetchConfigInterval = 10000;  // the value is a number of milliseconds
 unsigned long readTempPeriod = 13000; // the value is a number of milliseconds
 unsigned long readPhPeriod = 10000;   // the value is a number of milliseconds
-unsigned long noFoodDetectPeriod = 1000;   // the value is a number of milliseconds
+unsigned long noFoodDetectInterval = 1000;   // the value is a number of milliseconds
 unsigned long foodStuckDetectPeriod = 5000;   // the value is a number of milliseconds
+unsigned long motorTurnPeriod = 5000;   // the value is a number of milliseconds
 
 //Time settings
 struct tm timeinfo;
@@ -460,6 +453,7 @@ String sendJson;
 float voltage, phValue, temperature = 25;
 int noFoodCount = 0;
 bool isFoodLeft = false;
+bool isMotorTurning = false;
 bool isFoodStuckDetectStart = false;
 bool isFoodStuck = false;
 
@@ -1011,11 +1005,13 @@ void requestCB2(void *optParm, AsyncHTTPSRequest *thisRequest, int readyState)
 
 		if (thisRequest->responseHTTPcode() == 200)
 		{
-      int pre_feedInterval,pre_readPhInterval,pre_readTempInterval; // save previous feedInterval
+      int pre_feedInterval,pre_readPhInterval,pre_readTempInterval; // save previous values
       String responseText = thisRequest->responseText();
 			Serial.println(F("\n**************************************"));
       Serial.println(responseText);
       Serial.println(F("**************************************"));
+      if (responseText == "null")
+      {}
       StaticJsonDocument<192> jsonResponse;
       auto deserializeError = deserializeJson(jsonResponse, responseText);
 
@@ -1091,7 +1087,6 @@ void setup()
 
   pinMode(motor1pin1, OUTPUT);
   pinMode(motor1pin2, OUTPUT);
-  //myservo.attach(motor1pin1);
   pinMode(32, OUTPUT);
   pinMode(LEDR, OUTPUT);
   pinMode(topIRpin, INPUT);
@@ -1487,8 +1482,8 @@ void loop()
     // Serial.println(voltage);
     // phValue = ph.readPH(voltage, temperature);  // convert voltage to pH with temperature compensation
     // phValue = random(10);
-    //phValue = map(analogRead(PH_PIN), 0, 4096, 0, 14);
-    phValue = random(6,8);
+    phValue = map(analogRead(PH_PIN), 0, 4096, 0, 14);
+    //phValue = random(6,8);
     Serial.print("pH:");
     Serial.println(phValue, 4);
     readPh_startMillis = currentMillis;
@@ -1540,32 +1535,61 @@ void loop()
       sendRequestCB[2]();
     }
   }
-  /*
-  if ((currentMillis - startMillis >= feedPeriod) && flag == true && Mode == 1)
-  {
-    //digitalWrite(motor1pin2, LOW);
-    myservo.write(60); 
-    digitalWrite(LEDR, LOW);
-    flag = false;
-    foodFeed_startMillis = currentMillis;
-  }
-  else if ((currentMillis - foodFeed_startMillis >= motorPeriod) && flag == false && Mode == 1)
-  {
-    //digitalWrite(motor1pin2, HIGH);
-    myservo.write(0);      
-    flag = true;
-    foodFeed_startMillis = currentMillis;
 
-    if (Count == 0)
-      Mode = 0;
-
-    else
-      Count = 0;
+   // Check food left
+  isFoodLeft = digitalRead(topIRpin); // 1 = no food detected, 0 = food detected
+  
+  if(!isFoodLeft) { // food detected
+    noFoodCount = 0;
   }
-  else if (Mode == 0)
-  {
-    digitalWrite(LEDR, HIGH);
+  if (currentMillis - noFoodDetect_startMillis >= noFoodDetectInterval){ // detect at 1 second interval
+    if (isFoodLeft) { // if no food left
+    noFoodCount++; // start counter
+    }
+    noFoodDetect_startMillis = currentMillis;
+  }
+  if (noFoodCount >= 5) { // more than 5 sec of no food detected
+    Serial.println("No Food!!!!!!!!"); // Alert user
+    noFoodCount = 0; // reset counter
+  }
+
+  // Feed food
+  if (currentMillis - foodFeed_startMillis >= atoi(feedInterval)){
+    //turn motor
     //digitalWrite(motor1pin2, HIGH);
-    myservo.write(0);   
-  }*/
+    
+    foodFeed_startMillis = currentMillis;
+    foodStuckDetect_startMillis = currentMillis;
+    motorTurning_startMillis = currentMillis;
+    isFoodStuckDetectStart = true;
+    isMotorTurning = true;
+  }
+  if (isMotorTurning)
+    {
+      //Serial.println("Motor Turn!");
+      
+      if (currentMillis - motorTurning_startMillis <= motorTurnPeriod) // constantly turning for 5 second
+      {
+        digitalWrite(motor1pin2, HIGH);
+      }
+      else
+      {
+        digitalWrite(motor1pin2, LOW);
+        isMotorTurning = false;
+      }
+    }
+  if (isFoodStuckDetectStart)
+  {
+    isFoodStuck = digitalRead(buttomIRpin); // 1 = stuck, 0 = not stuck
+    if (isFoodStuck) {
+      Serial.println("Food Stuck!!!!!!!!"); // Alert user
+      isFoodStuckDetectStart = false; // reset detection status
+    } else {
+      if (currentMillis - foodStuckDetect_startMillis <= foodStuckDetectPeriod) { // constantly detecting for 5 second
+      isFoodStuck = digitalRead(buttomIRpin); // 1 = stuck, 0 = not stuck
+      } else { // 5 sec passed
+        isFoodStuckDetectStart = false; // reset detection status
+      }
+    }
+  }
 }
