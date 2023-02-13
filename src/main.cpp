@@ -43,9 +43,6 @@ String chipID = String(ESP.getEfuseMac(), HEX);
 #define _ASYNC_HTTPS_LOGLEVEL_      2
 #define _WIFIMGR_LOGLEVEL_          1
 
-// 300s = 5 minutes to not flooding, 60s in testing
-#define HTTPS_REQUEST_INTERVAL      60  //300
-
 //Ported to ESP32
 #ifdef ESP32
   #include <esp_wifi.h>
@@ -329,7 +326,7 @@ char feedInterval [FEED_INTERVAL_LEN]       = "20000";
 //#include <AsyncHTTPRequest_Impl_Generic.h>        // https://github.com/khoih-prog/AsyncHTTPRequest_Generic
 
 // AsyncHTTPSRequest_Generic Settings (Must be declared after #include <AsyncHTTPSRequest_Generic.h>)
-#define NUM_DIFFERENT_SITES     3
+#define NUM_DIFFERENT_SITES     4
 
 // Setup urls required
 String strFirebase_url_ph = strFirebase_url + dataStoragePath + chipID + phDataPath +".json";
@@ -345,15 +342,17 @@ const char* addreses[][NUM_DIFFERENT_SITES] =
 {
 	{firebase_url_ph},
   {firebase_url_temp},
+  {firebase_url_config},
   {firebase_url_config}
 };
 
 #define NUM_ENTRIES_SITE_0        1
 #define NUM_ENTRIES_SITE_1        1
 #define NUM_ENTRIES_SITE_2        1
+#define NUM_ENTRIES_SITE_3        1
 
-byte reqCount[NUM_DIFFERENT_SITES]  = { NUM_ENTRIES_SITE_0, NUM_ENTRIES_SITE_1, NUM_ENTRIES_SITE_2 };
-bool readySend[NUM_DIFFERENT_SITES] = { true, true, true };
+byte reqCount[NUM_DIFFERENT_SITES]  = { NUM_ENTRIES_SITE_0, NUM_ENTRIES_SITE_1, NUM_ENTRIES_SITE_2, NUM_ENTRIES_SITE_3 };
+bool readySend[NUM_DIFFERENT_SITES] = { true, true, true, true };
 
 AsyncHTTPSRequest request[NUM_DIFFERENT_SITES];
 int status; // the Wifi radio's status
@@ -361,16 +360,18 @@ int status; // the Wifi radio's status
 void requestCB0(void* optParm, AsyncHTTPSRequest* thisRequest, int readyState);
 void requestCB1(void* optParm, AsyncHTTPSRequest* thisRequest, int readyState);
 void requestCB2(void* optParm, AsyncHTTPSRequest* thisRequest, int readyState);
+void requestCB3(void* optParm, AsyncHTTPSRequest* thisRequest, int readyState);
 
 void sendRequest0();
 void sendRequest1();
 void sendRequest2();
+void sendRequest3();
 
 typedef void (*requestCallback)(void* optParm, AsyncHTTPSRequest* thisRequest, int readyState);
 typedef void (*sendCallback)();
 
-requestCallback requestCB     [NUM_DIFFERENT_SITES] = { requestCB0,   requestCB1,   requestCB2   };
-sendCallback    sendRequestCB [NUM_DIFFERENT_SITES] = { sendRequest0, sendRequest1, sendRequest2 };
+requestCallback requestCB     [NUM_DIFFERENT_SITES] = { requestCB0,   requestCB1,   requestCB2,   requestCB3 };
+sendCallback    sendRequestCB [NUM_DIFFERENT_SITES] = { sendRequest0, sendRequest1, sendRequest2, sendRequest3 };
 
 ///////////////////////////////////////////
 // New in v1.4.0
@@ -444,10 +445,11 @@ unsigned long motorTurnPeriod = 5000;   // the value is a number of milliseconds
 struct tm timeinfo;
 char strTime[51];
 bool timeNotObtained = false;
+bool noConfigDetected = false;
 
 //JSON settings
-StaticJsonDocument<192> Doc;
-String sendJson;
+StaticJsonDocument<192> sendJson;
+String strSendJson;
 
 // Used variable
 float voltage, phValue, temperature = 25;
@@ -914,7 +916,30 @@ void sendPOSTRequest(uint16_t index)
   {
     // Only send() if open() returns true, or crash
     Serial.print("\nSending request: ");
-    request[index].send(sendJson);
+    request[index].send(strSendJson);
+  }
+  else
+  {
+		Serial.print("\nCan't send bad request : ");
+	}
+
+	Serial.println(addreses[index][reqCount[index]]);
+}
+
+void sendPUTRequest(uint16_t index)
+{
+	static bool requestOpenResult;
+
+	reqCount[index]--;
+	readySend[index] = false;
+  
+  requestOpenResult = request[index].open("PUT", addreses[index][reqCount[index]]);
+
+  if (requestOpenResult)
+  {
+    // Only send() if open() returns true, or crash
+    Serial.print("\nSending request: ");
+    request[index].send(strSendJson);
   }
   else
   {
@@ -939,6 +964,11 @@ void sendRequest2()
 	sendGETRequest(2);
 }
 
+void sendRequest3()
+{
+	sendPUTRequest(3);
+}
+
 void sendRequests()
 {
   // Setting all requests to have only 1 site
@@ -950,6 +980,7 @@ void sendRequests()
 	reqCount[0] = NUM_ENTRIES_SITE_0;
 	reqCount[1] = NUM_ENTRIES_SITE_1;
   reqCount[2] = NUM_ENTRIES_SITE_2;
+  reqCount[3] = NUM_ENTRIES_SITE_3;
 }
 
 void requestCB0(void *optParm, AsyncHTTPSRequest *thisRequest, int readyState)
@@ -1005,61 +1036,107 @@ void requestCB2(void *optParm, AsyncHTTPSRequest *thisRequest, int readyState)
 
 		if (thisRequest->responseHTTPcode() == 200)
 		{
-      int pre_feedInterval,pre_readPhInterval,pre_readTempInterval; // save previous values
+      unsigned long pre_feedInterval,pre_readPhInterval,pre_readTempInterval; // save previous values
       String responseText = thisRequest->responseText();
 			Serial.println(F("\n**************************************"));
       Serial.println(responseText);
       Serial.println(F("**************************************"));
       if (responseText == "null")
-      {}
-      StaticJsonDocument<192> jsonResponse;
-      auto deserializeError = deserializeJson(jsonResponse, responseText);
-
-      if (deserializeError)
       {
-        Serial.println(F("failed"));
+        Serial.print("No config detected. Send local config to firebase.");
+        noConfigDetected = true;
       }
       else
       {
-        Serial.println(F("OK"));
+        StaticJsonDocument<192> jsonResponse;
+        auto deserializeError = deserializeJson(jsonResponse, responseText);
 
-        if (jsonResponse["readPhInterval"])
+        if (deserializeError)
         {
-          pre_readPhInterval = atoi(readPhInterval); // save previous feedInterval
-          int readPhInterval_buffer = jsonResponse["readPhInterval"];
-          readPhInterval_buffer = readPhInterval_buffer * 1000; // Change from seconds to miliseconds
-          sprintf(readPhInterval, "%d", readPhInterval_buffer);
-          Serial.print("Set readPhInterval to ");
-          Serial.println(readPhInterval);
+          Serial.println(F("failed"));
         }
-        if (jsonResponse["readTempInterval"])
+        else
         {
-          pre_readTempInterval = atoi(readTempInterval); // save previous feedInterval
-          int readTempInterval_buffer = jsonResponse["readTempInterval"];
-          readTempInterval_buffer = readTempInterval_buffer * 1000; // Change from seconds to miliseconds
-          sprintf(readTempInterval, "%d", readTempInterval_buffer);
-          Serial.print("Set readTempInterval to ");
-          Serial.println(readTempInterval);
-        }
-        if (jsonResponse["feedInterval"])
-        {
-          pre_feedInterval = atoi(feedInterval); // save previous feedInterval
-          int feedInterval_buffer = jsonResponse["feedInterval"];
-          feedInterval_buffer = feedInterval_buffer * 1000;                    // Change from seconds to miliseconds
-          sprintf(feedInterval, "%d", feedInterval_buffer);
-          Serial.print("Set feedInterval to ");
-          Serial.println(feedInterval);
-        }
-        if (atoi(readPhInterval) != pre_readPhInterval || atoi(readTempInterval) != pre_readTempInterval || atoi(feedInterval) != pre_feedInterval) // feedInterval changed
+          Serial.println(F("OK"));
+
+          if (jsonResponse["readPhInterval"])
+          {
+            pre_readPhInterval = atoi(readPhInterval); // save previous feedInterval
+            //sprintf(pre_readPhInterval, "%s", readPhInterval);
+            int readPhInterval_buffer = jsonResponse["readPhInterval"];
+            //readPhInterval_buffer = readPhInterval_buffer * 1000; // Change from seconds to miliseconds
+            sprintf(readPhInterval, "%d", readPhInterval_buffer);
+            //sprintf(millis_char,"%lu", millis_ulong);
+            Serial.print("Set readPhInterval to ");
+            Serial.println(readPhInterval);
+          }
+          if (jsonResponse["readTempInterval"])
+          {
+            pre_readTempInterval = atoi(readTempInterval); // save previous feedInterval
+            unsigned long readTempInterval_buffer = jsonResponse["readTempInterval"];
+            //readTempInterval_buffer = readTempInterval_buffer * 1000; // Change from seconds to miliseconds
+            sprintf(readTempInterval, "%d", readTempInterval_buffer);
+            Serial.print("Set readTempInterval to ");
+            Serial.println(readTempInterval);
+          }
+          if (jsonResponse["feedInterval"])
+          {
+            pre_feedInterval = atoi(feedInterval); // save previous feedInterval
+            unsigned long feedInterval_buffer = jsonResponse["feedInterval"];
+            //feedInterval_buffer = feedInterval_buffer * 1000; // Change from seconds to miliseconds
+            sprintf(feedInterval, "%d", feedInterval_buffer);
+            Serial.print("Set feedInterval to ");
+            Serial.println(feedInterval);
+          }
+          if (atoi(readPhInterval) != pre_readPhInterval || atoi(readTempInterval) != pre_readTempInterval || atoi(feedInterval) != pre_feedInterval) // feedInterval changed
           {
             saveFileFSConfigFile(); // save new data to Config File
           }
-          jsonResponse.clear();   // release memory used by JsonObject
+          jsonResponse.clear(); // release memory used by JsonObject
+        }
       }
     }
 
     thisRequest->setDebug(false);
 		readySend[2] = true;
+
+    if (noConfigDetected == true)
+    {
+      strSendJson = ""; // clear string
+      sendJson.clear(); // release memory used by JsonObject
+      sendJson["readPhInterval"] = readPhInterval;
+      sendJson["readTempInterval"] = readTempInterval;
+      sendJson["blynk_token"] = blynk_token;
+      sendJson["feedInterval"] = feedInterval;
+      serializeJson(sendJson, strSendJson);
+      if (readySend[3] && WiFi.status() == WL_CONNECTED) // ready to send and wifi connected
+      {
+        reqCount[3] = NUM_ENTRIES_SITE_3;
+        sendRequestCB[3]();
+        noConfigDetected = false;
+      }
+    }
+  }
+}
+
+void requestCB3(void *optParm, AsyncHTTPSRequest *thisRequest, int readyState)
+{
+	(void) optParm;
+
+	if (readyState == readyStateDone)
+	{
+		AHTTPS_LOGDEBUG0(F("\n**************************************\n"));
+		AHTTPS_LOGDEBUG1(F("Response Code = "), thisRequest->responseHTTPString());
+
+		if (thisRequest->responseHTTPcode() == 200)
+		{
+			Serial.println(F("\n**************************************"));
+			Serial.println(thisRequest->responseText());
+			Serial.println(F("**************************************"));
+		}
+
+		thisRequest->setDebug(false);
+		readySend[3] = true;
 	}
 }
 
@@ -1488,14 +1565,14 @@ void loop()
     Serial.println(phValue, 4);
     readPh_startMillis = currentMillis;
     showOnLcd();
-    sendJson = ""; // clear string
-    Doc.clear();   // release memory used by JsonObject
+    strSendJson = ""; // clear string
+    sendJson.clear();   // release memory used by JsonObject
     if (!timeNotObtained) // Not able to configure NTP
     {
-      Doc["time"] = getTime();
+      sendJson["time"] = getTime();
     }
-    Doc["value"] = phValue;
-    serializeJson(Doc, sendJson);
+    sendJson["value"] = phValue;
+    serializeJson(sendJson, strSendJson);
     if (readySend[0] && !timeNotObtained) // ready to send and time is configured correctly
 		{
       reqCount[0] = NUM_ENTRIES_SITE_0;
@@ -1512,14 +1589,14 @@ void loop()
     Serial.println("^C");
     readTemp_startMillis = currentMillis;
     showOnLcd();
-    sendJson = ""; // clear string
-    Doc.clear();   // release memory used by JsonObject
+    strSendJson = ""; // clear string
+    sendJson.clear();   // release memory used by JsonObject
     if (!timeNotObtained) // Not able to configure NTP
     {
-      Doc["time"] = getTime();
+      sendJson["time"] = getTime();
     }
-    Doc["value"] = temperature;
-    serializeJson(Doc, sendJson);
+    sendJson["value"] = temperature;
+    serializeJson(sendJson, strSendJson);
     if (readySend[1] && !timeNotObtained) // ready to send and time is configured correctly
 		{
       reqCount[1] = NUM_ENTRIES_SITE_1;
@@ -1554,7 +1631,8 @@ void loop()
   }
 
   // Feed food
-  if (currentMillis - foodFeed_startMillis >= atoi(feedInterval)){
+  if (currentMillis - foodFeed_startMillis >= atoi(feedInterval))
+  {
     //turn motor
     //digitalWrite(motor1pin2, HIGH);
     
