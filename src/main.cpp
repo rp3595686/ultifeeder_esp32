@@ -9,16 +9,15 @@
 #include <ArduinoJson.h>
 #include "secrets.h"
 
-
-#if !( defined(ESP8266) ||  defined(ESP32) )
-  #error This code is intended to run on the ESP8266 or ESP32 platform! Please check your Tools->Board setting.
+#if !(defined(ESP8266) || defined(ESP32))
+#error This code is intended to run on the ESP8266 or ESP32 platform! Please check your Tools->Board setting.
 #endif
 
-#define ESP_ASYNC_WIFIMANAGER_VERSION_MIN_TARGET            "ESPAsync_WiFiManager v1.15.1"
-#define ESP_ASYNC_WIFIMANAGER_VERSION_MIN                   1015001
+#define ESP_ASYNC_WIFIMANAGER_VERSION_MIN_TARGET "ESPAsync_WiFiManager v1.15.1"
+#define ESP_ASYNC_WIFIMANAGER_VERSION_MIN 1015001
 
-#define ASYNC_HTTPS_REQUEST_GENERIC_VERSION_MIN_TARGET      "AsyncHTTPSRequest_Generic v2.2.1"
-#define ASYNC_HTTPS_REQUEST_GENERIC_VERSION_MIN             2002001
+#define ASYNC_HTTPS_REQUEST_GENERIC_VERSION_MIN_TARGET "AsyncHTTPSRequest_Generic v2.2.1"
+#define ASYNC_HTTPS_REQUEST_GENERIC_VERSION_MIN 2002001
 
 // Get Unique ID
 String chipID = String(ESP.getEfuseMac(), HEX);
@@ -26,105 +25,104 @@ String chipID = String(ESP.getEfuseMac(), HEX);
 /////////////////////////////////////////////////////////
 
 // Uncomment for certain HTTP site to optimize
-//#define NOT_SEND_HEADER_AFTER_CONNECTED        true
+// #define NOT_SEND_HEADER_AFTER_CONNECTED        true
 
 // Use larger queue size if necessary for large data transfer. Default is 512 bytes if not defined here
-//#define ASYNC_QUEUE_LENGTH     512
+// #define ASYNC_QUEUE_LENGTH     512
 
 // Use larger priority if necessary. Default is 10 if not defined here. Must be > 4 or adjusted to 4
-//#define CONFIG_ASYNC_TCP_PRIORITY   (12)
+// #define CONFIG_ASYNC_TCP_PRIORITY   (12)
 
 /////////////////////////////////////////////////////////
 
 // Level from 0-4
-#define ASYNC_HTTPS_DEBUG_PORT     Serial
+#define ASYNC_HTTPS_DEBUG_PORT Serial
 
-#define _ASYNC_TCP_SSL_LOGLEVEL_    1
-#define _ASYNC_HTTPS_LOGLEVEL_      2
-#define _WIFIMGR_LOGLEVEL_          1
+#define _ASYNC_TCP_SSL_LOGLEVEL_ 1
+#define _ASYNC_HTTPS_LOGLEVEL_ 2
+#define _WIFIMGR_LOGLEVEL_ 1
 
-//Ported to ESP32
+// Ported to ESP32
 #ifdef ESP32
-  #include <esp_wifi.h>
-  #include <WiFi.h>
-  #include <WiFiClient.h>
+#include <esp_wifi.h>
+#include <WiFi.h>
+#include <WiFiClient.h>
 
-  // From v1.1.1
-  #include <WiFiMulti.h>
-  WiFiMulti wifiMulti;
+// From v1.1.1
+#include <WiFiMulti.h>
+WiFiMulti wifiMulti;
 
-  // LittleFS has higher priority than SPIFFS
-  #define USE_LITTLEFS    true
-  #define USE_SPIFFS      false
+// LittleFS has higher priority than SPIFFS
+#define USE_LITTLEFS true
+#define USE_SPIFFS false
 
-  #if USE_LITTLEFS
-    // Use LittleFS
-    #include "FS.h"
+#if USE_LITTLEFS
+// Use LittleFS
+#include "FS.h"
 
-    // The library will be depreciated after being merged to future major Arduino esp32 core release 2.x
-    // At that time, just remove this library inclusion
-    #if ( defined(ESP_ARDUINO_VERSION_MAJOR) && (ESP_ARDUINO_VERSION_MAJOR >= 2) )
-      #warning Using ESP32 Core 1.0.6 or 2.0.0+ and core LittleFS library
-      // The library has been merged into esp32 core from release 1.0.6
-      #include <LittleFS.h>             // https://github.com/espressif/arduino-esp32/tree/master/libraries/LittleFS
+// The library will be depreciated after being merged to future major Arduino esp32 core release 2.x
+// At that time, just remove this library inclusion
+#if (defined(ESP_ARDUINO_VERSION_MAJOR) && (ESP_ARDUINO_VERSION_MAJOR >= 2))
+#warning Using ESP32 Core 1.0.6 or 2.0.0+ and core LittleFS library
+// The library has been merged into esp32 core from release 1.0.6
+#include <LittleFS.h> // https://github.com/espressif/arduino-esp32/tree/master/libraries/LittleFS
 
-      //#define FileFS        LittleFS
-      //#define FS_Name       "LittleFS"
-      FS* filesystem =      &LittleFS;
-      #define FileFS        LittleFS
-    #else
-      #warning Using ESP32 Core 1.0.5-. You must install LITTLEFS library
-      // The library has been merged into esp32 core from release 1.0.6
-      #include <LITTLEFS.h>             // https://github.com/lorol/LITTLEFS
+// #define FileFS        LittleFS
+// #define FS_Name       "LittleFS"
+FS *filesystem = &LittleFS;
+#define FileFS LittleFS
+#else
+#warning Using ESP32 Core 1.0.5-. You must install LITTLEFS library
+// The library has been merged into esp32 core from release 1.0.6
+#include <LITTLEFS.h> // https://github.com/lorol/LITTLEFS
 
-      //#define FileFS        LITTLEFS
-      FS* filesystem =      &LITTLEFS;
-      #define FileFS        LITTLEFS
-    #endif
+// #define FileFS        LITTLEFS
+FS *filesystem = &LITTLEFS;
+#define FileFS LITTLEFS
+#endif
 
-    #define FS_Name       "LittleFS"
-  #elif USE_SPIFFS
-    #include <SPIFFS.h>
-    FS* filesystem =      &SPIFFS;
-    #define FileFS        SPIFFS
-    #define FS_Name       "SPIFFS"
-  #else
-    // +Use FFat
-    #include <FFat.h>
-    FS* filesystem =      &FFat;
-    #define FileFS        FFat
-    #define FS_Name       "FFat"
-  #endif
-  //////
+#define FS_Name "LittleFS"
+#elif USE_SPIFFS
+#include <SPIFFS.h>
+FS *filesystem = &SPIFFS;
+#define FileFS SPIFFS
+#define FS_Name "SPIFFS"
+#else
+// +Use FFat
+#include <FFat.h>
+FS *filesystem = &FFat;
+#define FileFS FFat
+#define FS_Name "FFat"
+#endif
+//////
 
 #else
 
-  #include <ESP8266WiFi.h>          //https://github.com/esp8266/Arduino
-  //needed for library
-  #include <DNSServer.h>
+#include <ESP8266WiFi.h> //https://github.com/esp8266/Arduino
+// needed for library
+#include <DNSServer.h>
 
-  // From v1.1.1
-  #include <ESP8266WiFiMulti.h>
-  ESP8266WiFiMulti wifiMulti;
+// From v1.1.1
+#include <ESP8266WiFiMulti.h>
+ESP8266WiFiMulti wifiMulti;
 
-  #define USE_LITTLEFS      true
+#define USE_LITTLEFS true
 
-  #if USE_LITTLEFS
-    #include <LittleFS.h>
-    FS* filesystem =      &LittleFS;
-    #define FileFS        LittleFS
-    #define FS_Name       "LittleFS"
-  #else
-    FS* filesystem =      &SPIFFS;
-    #define FileFS        SPIFFS
-    #define FS_Name       "SPIFFS"
-  #endif
-  //////
-
-  #define LED_ON      LOW
-  #define LED_OFF     HIGH
+#if USE_LITTLEFS
+#include <LittleFS.h>
+FS *filesystem = &LittleFS;
+#define FileFS LittleFS
+#define FS_Name "LittleFS"
+#else
+FS *filesystem = &SPIFFS;
+#define FileFS SPIFFS
+#define FS_Name "SPIFFS"
 #endif
+//////
 
+#define LED_ON LOW
+#define LED_OFF HIGH
+#endif
 
 // These defines must be put before #include <ESP_DoubleResetDetector.h>
 // to select where to store DoubleResetDetector's variable.
@@ -133,46 +131,46 @@ String chipID = String(ESP.getEfuseMac(), HEX);
 // Otherwise, library will use default EEPROM storage
 #ifdef ESP32
 
-  // These defines must be put before #include <ESP_DoubleResetDetector.h>
-  // to select where to store DoubleResetDetector's variable.
-  // For ESP32, You must select one to be true (EEPROM or SPIFFS)
-  // Otherwise, library will use default EEPROM storage
-  #if USE_LITTLEFS
-    #define ESP_DRD_USE_LITTLEFS    true
-    #define ESP_DRD_USE_SPIFFS      false
-    #define ESP_DRD_USE_EEPROM      false
-  #elif USE_SPIFFS
-    #define ESP_DRD_USE_LITTLEFS    false
-    #define ESP_DRD_USE_SPIFFS      true
-    #define ESP_DRD_USE_EEPROM      false
-  #else
-    #define ESP_DRD_USE_LITTLEFS    false
-    #define ESP_DRD_USE_SPIFFS      false
-    #define ESP_DRD_USE_EEPROM      true
-  #endif
-
-#else //ESP8266
-
-  // For DRD
-  // These defines must be put before #include <ESP_DoubleResetDetector.h>
-  // to select where to store DoubleResetDetector's variable.
-  // For ESP8266, You must select one to be true (RTC, EEPROM, SPIFFS or LITTLEFS)
-  // Otherwise, library will use default EEPROM storage
-  #if USE_LITTLEFS
-    #define ESP_DRD_USE_LITTLEFS    true
-    #define ESP_DRD_USE_SPIFFS      false
-  #else
-    #define ESP_DRD_USE_LITTLEFS    false
-    #define ESP_DRD_USE_SPIFFS      true
-  #endif
-
-  #define ESP_DRD_USE_EEPROM      false
-  #define ESP8266_DRD_USE_RTC     false
+// These defines must be put before #include <ESP_DoubleResetDetector.h>
+// to select where to store DoubleResetDetector's variable.
+// For ESP32, You must select one to be true (EEPROM or SPIFFS)
+// Otherwise, library will use default EEPROM storage
+#if USE_LITTLEFS
+#define ESP_DRD_USE_LITTLEFS true
+#define ESP_DRD_USE_SPIFFS false
+#define ESP_DRD_USE_EEPROM false
+#elif USE_SPIFFS
+#define ESP_DRD_USE_LITTLEFS false
+#define ESP_DRD_USE_SPIFFS true
+#define ESP_DRD_USE_EEPROM false
+#else
+#define ESP_DRD_USE_LITTLEFS false
+#define ESP_DRD_USE_SPIFFS false
+#define ESP_DRD_USE_EEPROM true
 #endif
 
-#define DOUBLERESETDETECTOR_DEBUG       true  //false
+#else // ESP8266
 
-#include <ESP_DoubleResetDetector.h>      //https://github.com/khoih-prog/ESP_DoubleResetDetector
+// For DRD
+// These defines must be put before #include <ESP_DoubleResetDetector.h>
+// to select where to store DoubleResetDetector's variable.
+// For ESP8266, You must select one to be true (RTC, EEPROM, SPIFFS or LITTLEFS)
+// Otherwise, library will use default EEPROM storage
+#if USE_LITTLEFS
+#define ESP_DRD_USE_LITTLEFS true
+#define ESP_DRD_USE_SPIFFS false
+#else
+#define ESP_DRD_USE_LITTLEFS false
+#define ESP_DRD_USE_SPIFFS true
+#endif
+
+#define ESP_DRD_USE_EEPROM false
+#define ESP8266_DRD_USE_RTC false
+#endif
+
+#define DOUBLERESETDETECTOR_DEBUG true // false
+
+#include <ESP_DoubleResetDetector.h> //https://github.com/khoih-prog/ESP_DoubleResetDetector
 
 // Number of seconds after reset during which a
 // subseqent reset will be considered a double reset.
@@ -181,8 +179,8 @@ String chipID = String(ESP.getEfuseMac(), HEX);
 // RTC Memory Address for the DoubleResetDetector to use
 #define DRD_ADDRESS 0
 
-//DoubleResetDetector drd(DRD_TIMEOUT, DRD_ADDRESS);
-DoubleResetDetector* drd;//////
+// DoubleResetDetector drd(DRD_TIMEOUT, DRD_ADDRESS);
+DoubleResetDetector *drd; //////
 
 // Config File for saving variable
 char configFileName[] = "/config.json";
@@ -193,38 +191,38 @@ String Router_Pass;
 
 // From v1.1.1
 // You only need to format the filesystem once
-#define FORMAT_FILESYSTEM       true
-//#define FORMAT_FILESYSTEM         false
+#define FORMAT_FILESYSTEM true
+// #define FORMAT_FILESYSTEM         false
 
-#define MIN_AP_PASSWORD_SIZE    8
+#define MIN_AP_PASSWORD_SIZE 8
 
-#define SSID_MAX_LEN            32
-//From v1.0.10, WPA2 passwords can be up to 63 characters long.
-#define PASS_MAX_LEN            64
+#define SSID_MAX_LEN 32
+// From v1.0.10, WPA2 passwords can be up to 63 characters long.
+#define PASS_MAX_LEN 64
 
 typedef struct
 {
   char wifi_ssid[SSID_MAX_LEN];
-  char wifi_pw  [PASS_MAX_LEN];
-}  WiFi_Credentials;
+  char wifi_pw[PASS_MAX_LEN];
+} WiFi_Credentials;
 
 typedef struct
 {
   String wifi_ssid;
   String wifi_pw;
-}  WiFi_Credentials_String;
+} WiFi_Credentials_String;
 
-#define NUM_WIFI_CREDENTIALS      2
+#define NUM_WIFI_CREDENTIALS 2
 
 typedef struct
 {
-  WiFi_Credentials  WiFi_Creds [NUM_WIFI_CREDENTIALS];
+  WiFi_Credentials WiFi_Creds[NUM_WIFI_CREDENTIALS];
   uint16_t checksum;
 } WM_Config;
 
-WM_Config         WM_config;
+WM_Config WM_config;
 
-#define  CONFIG_FILENAME              F("/wifi_cred.dat")
+#define CONFIG_FILENAME F("/wifi_cred.dat")
 //////
 
 // Indicates whether ESP has WiFi credentials saved from previous session, or double reset detected
@@ -233,145 +231,142 @@ bool initialConfig = false;
 // Use false if you don't like to display Available Pages in Information Page of Config Portal
 // Comment out or use true to display Available Pages in Information Page of Config Portal
 // Must be placed before #include <ESP_WiFiManager.h>
-#define USE_AVAILABLE_PAGES     false
+#define USE_AVAILABLE_PAGES false
 
 // From v1.0.10 to permit disable/enable StaticIP configuration in Config Portal from sketch. Valid only if DHCP is used.
 // You'll loose the feature of dynamically changing from DHCP to static IP, or vice versa
 // You have to explicitly specify false to disable the feature.
-//#define USE_STATIC_IP_CONFIG_IN_CP          false
+// #define USE_STATIC_IP_CONFIG_IN_CP          false
 
 // Use false to disable NTP config. Advisable when using Cellphone, Tablet to access Config Portal.
 // See Issue 23: On Android phone ConfigPortal is unresponsive (https://github.com/khoih-prog/ESP_WiFiManager/issues/23)
-#define USE_ESP_WIFIMANAGER_NTP     false
+#define USE_ESP_WIFIMANAGER_NTP false
 
 // Use true to enable CloudFlare NTP service. System can hang if you don't have Internet access while accessing CloudFlare
 // See Issue #21: CloudFlare link in the default portal (https://github.com/khoih-prog/ESP_WiFiManager/issues/21)
-#define USE_CLOUDFLARE_NTP          false
+#define USE_CLOUDFLARE_NTP false
 
 // New in v1.0.11
-#define USING_CORS_FEATURE          false
+#define USING_CORS_FEATURE false
 //////
 
 // Use USE_DHCP_IP == true for dynamic DHCP IP, false to use static IP which you have to change accordingly to your network
 #if (defined(USE_STATIC_IP_CONFIG_IN_CP) && !USE_STATIC_IP_CONFIG_IN_CP)
-  // Force DHCP to be true
-  #if defined(USE_DHCP_IP)
-    #undef USE_DHCP_IP
-  #endif
-  #define USE_DHCP_IP     true
+// Force DHCP to be true
+#if defined(USE_DHCP_IP)
+#undef USE_DHCP_IP
+#endif
+#define USE_DHCP_IP true
 #else
-  // You can select DHCP or Static IP here
-  #define USE_DHCP_IP     true
-  //#define USE_DHCP_IP     false
+// You can select DHCP or Static IP here
+#define USE_DHCP_IP true
+// #define USE_DHCP_IP     false
 #endif
 
-#if ( USE_DHCP_IP || ( defined(USE_STATIC_IP_CONFIG_IN_CP) && !USE_STATIC_IP_CONFIG_IN_CP ) )
-  // Use DHCP
-  #warning Using DHCP IP
-  IPAddress stationIP   = IPAddress(0, 0, 0, 0);
-  IPAddress gatewayIP   = IPAddress(192, 168, 2, 1);
-  IPAddress netMask     = IPAddress(255, 255, 255, 0);
+#if (USE_DHCP_IP || (defined(USE_STATIC_IP_CONFIG_IN_CP) && !USE_STATIC_IP_CONFIG_IN_CP))
+// Use DHCP
+#warning Using DHCP IP
+IPAddress stationIP = IPAddress(0, 0, 0, 0);
+IPAddress gatewayIP = IPAddress(192, 168, 2, 1);
+IPAddress netMask = IPAddress(255, 255, 255, 0);
 #else
-  // Use static IP
-  #warning Using static IP
+// Use static IP
+#warning Using static IP
 
-  #ifdef ESP32
-    IPAddress stationIP   = IPAddress(192, 168, 2, 232);
-  #else
-    IPAddress stationIP   = IPAddress(192, 168, 2, 186);
-  #endif
-
-  IPAddress gatewayIP   = IPAddress(192, 168, 2, 1);
-  IPAddress netMask     = IPAddress(255, 255, 255, 0);
+#ifdef ESP32
+IPAddress stationIP = IPAddress(192, 168, 2, 232);
+#else
+IPAddress stationIP = IPAddress(192, 168, 2, 186);
 #endif
 
-#define USE_CONFIGURABLE_DNS      true
+IPAddress gatewayIP = IPAddress(192, 168, 2, 1);
+IPAddress netMask = IPAddress(255, 255, 255, 0);
+#endif
 
-IPAddress dns1IP      = gatewayIP;
-IPAddress dns2IP      = IPAddress(8, 8, 8, 8);
+#define USE_CONFIGURABLE_DNS true
 
-#define USE_CUSTOM_AP_IP          false
+IPAddress dns1IP = gatewayIP;
+IPAddress dns2IP = IPAddress(8, 8, 8, 8);
 
-IPAddress APStaticIP  = IPAddress(192, 168, 100, 1);
-IPAddress APStaticGW  = IPAddress(192, 168, 100, 1);
-IPAddress APStaticSN  = IPAddress(255, 255, 255, 0);
+#define USE_CUSTOM_AP_IP false
 
-#include <ESPAsync_WiFiManager.h>              //https://github.com/khoih-prog/ESPAsync_WiFiManager
+IPAddress APStaticIP = IPAddress(192, 168, 100, 1);
+IPAddress APStaticGW = IPAddress(192, 168, 100, 1);
+IPAddress APStaticSN = IPAddress(255, 255, 255, 0);
 
-// To be included only in main(), .ino with setup() to avoid `Multiple Definitions` Linker Error
-//#include <ESPAsync_WiFiManager-Impl.h>         //https://github.com/khoih-prog/ESPAsync_WiFiManager
-
-#define HTTP_PORT           80
-
-//define your default values here, if there are different values in configFileName (config.json), they are overwritten.
-#define Read_PH_INTERVAL_LEN            6
-#define Read_TEMP_INTERVAL_LEN          6
-#define BLYNK_TOKEN_LEN           64
-
-#define MQTT_SERVER_MAX_LEN             40
-#define MQTT_SERVER_PORT_LEN            6
-#define FEED_INTERVAL_LEN               6
-
-char readPhInterval     [Read_PH_INTERVAL_LEN]        = "10000";
-char readTempInterval   [Read_TEMP_INTERVAL_LEN]      = "11000";
-char blynk_token  [BLYNK_TOKEN_LEN]         = "YOUR_BLYNK_TOKEN";
-
-char mqtt_server  [MQTT_SERVER_MAX_LEN];
-char mqtt_port    [MQTT_SERVER_PORT_LEN]    = "8080";
-char feedInterval [FEED_INTERVAL_LEN]       = "20000";
-
-#include <AsyncHTTPSRequest_Generic.h>             // https://github.com/khoih-prog/AsyncHTTPRequest_Generic
+#include <ESPAsync_WiFiManager.h> //https://github.com/khoih-prog/ESPAsync_WiFiManager
 
 // To be included only in main(), .ino with setup() to avoid `Multiple Definitions` Linker Error
-//#include <AsyncHTTPRequest_Impl_Generic.h>        // https://github.com/khoih-prog/AsyncHTTPRequest_Generic
+// #include <ESPAsync_WiFiManager-Impl.h>         //https://github.com/khoih-prog/ESPAsync_WiFiManager
+
+#define HTTP_PORT 80
+
+// define your default values here, if there are different values in configFileName (config.json), they are overwritten.
+#define Read_PH_INTERVAL_LEN 6
+#define Read_TEMP_INTERVAL_LEN 6
+#define FEED_INTERVAL_LEN 6
+
+char readPhInterval[Read_PH_INTERVAL_LEN] = "10000";
+char readTempInterval[Read_TEMP_INTERVAL_LEN] = "11000";
+char feedInterval[FEED_INTERVAL_LEN] = "20000";
+
+#include <AsyncHTTPSRequest_Generic.h> // https://github.com/khoih-prog/AsyncHTTPRequest_Generic
+
+// To be included only in main(), .ino with setup() to avoid `Multiple Definitions` Linker Error
+// #include <AsyncHTTPRequest_Impl_Generic.h>        // https://github.com/khoih-prog/AsyncHTTPRequest_Generic
 
 // AsyncHTTPSRequest_Generic Settings (Must be declared after #include <AsyncHTTPSRequest_Generic.h>)
-#define NUM_DIFFERENT_SITES     4
+#define NUM_DIFFERENT_SITES 5
 
 // Setup urls required
-String strFirebase_url_ph = strFirebase_url + dataStoragePath + chipID + phDataPath +".json";
+String strFirebase_url_ph = strFirebase_url + dataStoragePath + chipID + phDataPath + ".json";
 String strFirebase_url_temp = strFirebase_url + dataStoragePath + chipID + tempDataPath + ".json";
 String strFirebase_url_config = strFirebase_url + configPath + chipID + ".json";
+String strFirebase_url_error = strFirebase_url + errorPath + chipID + ".json";
 
 // Convert from String to const char*
-const char*  firebase_url_ph = strFirebase_url_ph.c_str();
-const char* firebase_url_temp = strFirebase_url_temp.c_str();
-const char* firebase_url_config = strFirebase_url_config.c_str();
+const char *firebase_url_ph = strFirebase_url_ph.c_str();
+const char *firebase_url_temp = strFirebase_url_temp.c_str();
+const char *firebase_url_config = strFirebase_url_config.c_str();
+const char *firebase_url_error = strFirebase_url_error.c_str();
 
-const char* addreses[][NUM_DIFFERENT_SITES] =
-{
-	{firebase_url_ph},
-  {firebase_url_temp},
-  {firebase_url_config},
-  {firebase_url_config}
-};
+const char *addreses[][NUM_DIFFERENT_SITES] =
+    {
+        {firebase_url_ph},
+        {firebase_url_temp},
+        {firebase_url_config},
+        {firebase_url_config},
+        {firebase_url_error}};
 
-#define NUM_ENTRIES_SITE_0        1
-#define NUM_ENTRIES_SITE_1        1
-#define NUM_ENTRIES_SITE_2        1
-#define NUM_ENTRIES_SITE_3        1
+#define NUM_ENTRIES_SITE_0 1
+#define NUM_ENTRIES_SITE_1 1
+#define NUM_ENTRIES_SITE_2 1
+#define NUM_ENTRIES_SITE_3 1
+#define NUM_ENTRIES_SITE_4 1
 
-byte reqCount[NUM_DIFFERENT_SITES]  = { NUM_ENTRIES_SITE_0, NUM_ENTRIES_SITE_1, NUM_ENTRIES_SITE_2, NUM_ENTRIES_SITE_3 };
-bool readySend[NUM_DIFFERENT_SITES] = { true, true, true, true };
+byte reqCount[NUM_DIFFERENT_SITES] = {NUM_ENTRIES_SITE_0, NUM_ENTRIES_SITE_1, NUM_ENTRIES_SITE_2, NUM_ENTRIES_SITE_3, NUM_ENTRIES_SITE_4};
+bool readySend[NUM_DIFFERENT_SITES] = {true, true, true, true, true};
 
 AsyncHTTPSRequest request[NUM_DIFFERENT_SITES];
 int status; // the Wifi radio's status
 
-void requestCB0(void* optParm, AsyncHTTPSRequest* thisRequest, int readyState);
-void requestCB1(void* optParm, AsyncHTTPSRequest* thisRequest, int readyState);
-void requestCB2(void* optParm, AsyncHTTPSRequest* thisRequest, int readyState);
-void requestCB3(void* optParm, AsyncHTTPSRequest* thisRequest, int readyState);
+void requestCB0(void *optParm, AsyncHTTPSRequest *thisRequest, int readyState);
+void requestCB1(void *optParm, AsyncHTTPSRequest *thisRequest, int readyState);
+void requestCB2(void *optParm, AsyncHTTPSRequest *thisRequest, int readyState);
+void requestCB3(void *optParm, AsyncHTTPSRequest *thisRequest, int readyState);
+void requestCB4(void *optParm, AsyncHTTPSRequest *thisRequest, int readyState);
 
 void sendRequest0();
 void sendRequest1();
 void sendRequest2();
 void sendRequest3();
+void sendRequest4();
 
-typedef void (*requestCallback)(void* optParm, AsyncHTTPSRequest* thisRequest, int readyState);
+typedef void (*requestCallback)(void *optParm, AsyncHTTPSRequest *thisRequest, int readyState);
 typedef void (*sendCallback)();
 
-requestCallback requestCB     [NUM_DIFFERENT_SITES] = { requestCB0,   requestCB1,   requestCB2,   requestCB3 };
-sendCallback    sendRequestCB [NUM_DIFFERENT_SITES] = { sendRequest0, sendRequest1, sendRequest2, sendRequest3 };
+requestCallback requestCB[NUM_DIFFERENT_SITES] = {requestCB0, requestCB1, requestCB2, requestCB3, requestCB4};
+sendCallback sendRequestCB[NUM_DIFFERENT_SITES] = {sendRequest0, sendRequest1, sendRequest2, sendRequest3, sendRequest4};
 
 ///////////////////////////////////////////
 // New in v1.4.0
@@ -395,30 +390,28 @@ sendCallback    sendRequestCB [NUM_DIFFERENT_SITES] = { sendRequest0, sendReques
   }  WiFi_STA_IPConfig;
 ******************************************/
 
-WiFi_AP_IPConfig  WM_AP_IPconfig;
+WiFi_AP_IPConfig WM_AP_IPconfig;
 WiFi_STA_IPConfig WM_STA_IPconfig;
 
-//NTP settings
-const char *ntpServers[] = {"ntp.np.edu.sg", "pool.ntp.org","sg.pool.ntp.org","time.google.com","time.cloudflare.com"};
+// NTP settings
+const char *ntpServers[] = {"ntp.np.edu.sg", "pool.ntp.org", "sg.pool.ntp.org", "time.google.com", "time.cloudflare.com"};
 int ntpArraySize = sizeof(ntpServers) / sizeof(ntpServers[0]);
 const long gmtOffset_sec = 28800;
 const int daylightOffset_sec = 0;
 
-//Temp sensor settings
+// Temp sensor settings
 #define ONE_WIRE_BUS 15
 OneWire oneWire(ONE_WIRE_BUS);
 DallasTemperature sensors(&oneWire);
 
-#define LEDR 4 // Red LED ESP32 Pin 22
-
-//ph sensor settings
+// ph sensor settings
 DFRobot_ESP_PH_WITH_ADC ph;
 #define ESPADC 4096.0   // the esp Analog Digital Convertion value
 #define ESPVOLTAGE 5000 // the esp voltage supply value
 #define PH_PIN 35       // the esp gpio data pin number
 Adafruit_ADS1115 ads;
 
-//LCD display settings
+// LCD display settings
 /* Global used for buffer optimization */
 Gpu_Hal_Context_t host, *phost;
 
@@ -433,21 +426,21 @@ unsigned long foodStuckDetect_startMillis;
 unsigned long motorTurning_startMillis;
 
 // Period Config
-//unsigned long feedInterval = 10000;  // the value is a number of milliseconds
+// unsigned long feedInterval = 10000;  // the value is a number of milliseconds
 unsigned long fetchConfigInterval = 10000;  // the value is a number of milliseconds
-unsigned long readTempPeriod = 13000; // the value is a number of milliseconds
-unsigned long readPhPeriod = 10000;   // the value is a number of milliseconds
-unsigned long noFoodDetectInterval = 1000;   // the value is a number of milliseconds
-unsigned long foodStuckDetectPeriod = 5000;   // the value is a number of milliseconds
-unsigned long motorTurnPeriod = 5000;   // the value is a number of milliseconds
+unsigned long readTempPeriod = 13000;       // the value is a number of milliseconds
+unsigned long readPhPeriod = 10000;         // the value is a number of milliseconds
+unsigned long noFoodDetectInterval = 1000;  // the value is a number of milliseconds
+unsigned long foodStuckDetectPeriod = 5000; // the value is a number of milliseconds
+unsigned long motorTurnPeriod = 5000;       // the value is a number of milliseconds
 
-//Time settings
+// Time settings
 struct tm timeinfo;
 char strTime[51];
 bool timeNotObtained = false;
 bool noConfigDetected = false;
 
-//JSON settings
+// JSON settings
 StaticJsonDocument<192> sendJson;
 String strSendJson;
 
@@ -467,16 +460,16 @@ const int buttomIRpin = 12;
 
 void initAPIPConfigStruct(WiFi_AP_IPConfig &in_WM_AP_IPconfig)
 {
-  in_WM_AP_IPconfig._ap_static_ip   = APStaticIP;
-  in_WM_AP_IPconfig._ap_static_gw   = APStaticGW;
-  in_WM_AP_IPconfig._ap_static_sn   = APStaticSN;
+  in_WM_AP_IPconfig._ap_static_ip = APStaticIP;
+  in_WM_AP_IPconfig._ap_static_gw = APStaticGW;
+  in_WM_AP_IPconfig._ap_static_sn = APStaticSN;
 }
 
 void initSTAIPConfigStruct(WiFi_STA_IPConfig &in_WM_STA_IPconfig)
 {
-  in_WM_STA_IPconfig._sta_static_ip   = stationIP;
-  in_WM_STA_IPconfig._sta_static_gw   = gatewayIP;
-  in_WM_STA_IPconfig._sta_static_sn   = netMask;
+  in_WM_STA_IPconfig._sta_static_ip = stationIP;
+  in_WM_STA_IPconfig._sta_static_gw = gatewayIP;
+  in_WM_STA_IPconfig._sta_static_sn = netMask;
 #if USE_CONFIGURABLE_DNS
   in_WM_STA_IPconfig._sta_static_dns1 = dns1IP;
   in_WM_STA_IPconfig._sta_static_dns2 = dns2IP;
@@ -511,35 +504,34 @@ uint8_t connectMultiWiFi()
 #if ESP32
   // For ESP32, this better be 0 to shorten the connect time.
   // For ESP32-S2, must be > 500
-#if ( ARDUINO_ESP32S2_DEV || ARDUINO_FEATHERS2 || ARDUINO_PROS2 || ARDUINO_MICROS2 )
-#define WIFI_MULTI_1ST_CONNECT_WAITING_MS           500L
+#if (ARDUINO_ESP32S2_DEV || ARDUINO_FEATHERS2 || ARDUINO_PROS2 || ARDUINO_MICROS2)
+#define WIFI_MULTI_1ST_CONNECT_WAITING_MS 500L
 #else
   // For ESP32 core v1.0.6, must be >= 500
-#define WIFI_MULTI_1ST_CONNECT_WAITING_MS           800L
+#define WIFI_MULTI_1ST_CONNECT_WAITING_MS 800L
 #endif
 #else
   // For ESP8266, this better be 2200 to enable connect the 1st time
-#define WIFI_MULTI_1ST_CONNECT_WAITING_MS             2200L
+#define WIFI_MULTI_1ST_CONNECT_WAITING_MS 2200L
 #endif
 
-#define WIFI_MULTI_CONNECT_WAITING_MS                   100L
+#define WIFI_MULTI_CONNECT_WAITING_MS 100L
 
   uint8_t status;
 
   LOGERROR(F("ConnectMultiWiFi with :"));
 
-  if ( (Router_SSID != "") && (Router_Pass != "") )
+  if ((Router_SSID != "") && (Router_Pass != ""))
   {
-    LOGERROR3(F("* Flash-stored Router_SSID = "), Router_SSID, F(", Router_Pass = "), Router_Pass );
+    LOGERROR3(F("* Flash-stored Router_SSID = "), Router_SSID, F(", Router_Pass = "), Router_Pass);
   }
 
   for (uint8_t i = 0; i < NUM_WIFI_CREDENTIALS; i++)
   {
     // Don't permit NULL SSID and password len < MIN_AP_PASSWORD_SIZE (8)
-    if ( (String(WM_config.WiFi_Creds[i].wifi_ssid) != "")
-         && (strlen(WM_config.WiFi_Creds[i].wifi_pw) >= MIN_AP_PASSWORD_SIZE) )
+    if ((String(WM_config.WiFi_Creds[i].wifi_ssid) != "") && (strlen(WM_config.WiFi_Creds[i].wifi_pw) >= MIN_AP_PASSWORD_SIZE))
     {
-      LOGERROR3(F("* Additional SSID = "), WM_config.WiFi_Creds[i].wifi_ssid, F(", PW = "), WM_config.WiFi_Creds[i].wifi_pw );
+      LOGERROR3(F("* Additional SSID = "), WM_config.WiFi_Creds[i].wifi_ssid, F(", PW = "), WM_config.WiFi_Creds[i].wifi_pw);
     }
   }
 
@@ -558,21 +550,21 @@ uint8_t connectMultiWiFi()
 
   delay(WIFI_MULTI_1ST_CONNECT_WAITING_MS);
 
-  while ( ( i++ < 10 ) && ( status != WL_CONNECTED ) )
+  while ((i++ < 10) && (status != WL_CONNECTED))
   {
     status = wifiMulti.run();
 
-    if ( status == WL_CONNECTED )
+    if (status == WL_CONNECTED)
       break;
     else
       delay(WIFI_MULTI_CONNECT_WAITING_MS);
   }
 
-  if ( status == WL_CONNECTED )
+  if (status == WL_CONNECTED)
   {
     LOGERROR1(F("WiFi connected after time: "), i);
     LOGERROR3(F("SSID:"), WiFi.SSID(), F(",RSSI="), WiFi.RSSI());
-    LOGERROR3(F("Channel:"), WiFi.channel(), F(",IP address:"), WiFi.localIP() );
+    LOGERROR3(F("Channel:"), WiFi.channel(), F(",IP address:"), WiFi.localIP());
   }
   else
   {
@@ -585,11 +577,10 @@ uint8_t connectMultiWiFi()
   return status;
 }
 
-
-//flag for saving data
+// flag for saving data
 bool shouldSaveConfig = false;
 
-//callback notifying us of the need to save config
+// callback notifying us of the need to save config
 void saveConfigCallback()
 {
   Serial.println(F("Should save config"));
@@ -598,10 +589,10 @@ void saveConfigCallback()
 
 bool loadFileFSConfigFile()
 {
-  //clean FS, for testing
-  //FileFS.format();
+  // clean FS, for testing
+  // FileFS.format();
 
-  //read configuration from FS json
+  // read configuration from FS json
   Serial.println(F("Mounting FS..."));
 
   if (FileFS.begin())
@@ -610,7 +601,7 @@ bool loadFileFSConfigFile()
 
     if (FileFS.exists(configFileName))
     {
-      //file exists, reading and loading
+      // file exists, reading and loading
       Serial.println(F("Reading config file"));
       File configFile = FileFS.open(configFileName, "r");
 
@@ -631,7 +622,7 @@ bool loadFileFSConfigFile()
         DynamicJsonDocument json(1024);
         auto deserializeError = deserializeJson(json, buf.get(), configFileSize);
 
-        if ( deserializeError )
+        if (deserializeError)
         {
           Serial.println(F("failed"));
           return false;
@@ -646,45 +637,30 @@ bool loadFileFSConfigFile()
           if (json["readTempInterval"])
             strncpy(readTempInterval, json["readTempInterval"], sizeof(readTempInterval));
 
-          if (json["blynk_token"])
-            strncpy(blynk_token,  json["blynk_token"], sizeof(blynk_token));
-
-          if (json["mqtt_server"])
-            strncpy(mqtt_server, json["mqtt_server"], sizeof(mqtt_server));
-
-          if (json["mqtt_port"])
-            strncpy(mqtt_port,   json["mqtt_port"], sizeof(mqtt_port));
-          
           if (json["feedInterval"])
-            strncpy(feedInterval,   json["feedInterval"], sizeof(feedInterval));
+            strncpy(feedInterval, json["feedInterval"], sizeof(feedInterval));
         }
 
-        //serializeJson(json, Serial);
+        // serializeJson(json, Serial);
         serializeJsonPretty(json, Serial);
 #else
         DynamicJsonBuffer jsonBuffer;
         // Parse JSON string
-        JsonObject& json = jsonBuffer.parseObject(buf.get());
+        JsonObject &json = jsonBuffer.parseObject(buf.get());
         // Test if parsing succeeds.
 
         if (json.success())
         {
           Serial.println("OK");
 
-          if (json["blynk_server"])
-            strncpy(blynk_server, json["blynk_server"], sizeof(blynk_server));
+          if (json["readPhInterval"])
+            strncpy(readPhInterval, json["readPhInterval"], sizeof(readPhInterval));
 
-          if (json["blynk_port"])
-            strncpy(blynk_port, json["blynk_port"], sizeof(blynk_port));
+          if (json["readTempInterval"])
+            strncpy(readTempInterval, json["readTempInterval"], sizeof(readTempInterval));
 
-          if (json["blynk_token"])
-            strncpy(blynk_token,  json["blynk_token"], sizeof(blynk_token));
-
-          if (json["mqtt_server"])
-            strncpy(mqtt_server, json["mqtt_server"], sizeof(mqtt_server));
-
-          if (json["mqtt_port"])
-            strncpy(mqtt_port,   json["mqtt_port"], sizeof(mqtt_port));
+          if (json["feedInterval"])
+            strncpy(feedInterval, json["feedInterval"], sizeof(feedInterval));
         }
         else
         {
@@ -692,7 +668,7 @@ bool loadFileFSConfigFile()
           return false;
         }
 
-        //json.printTo(Serial);
+        // json.printTo(Serial);
         json.prettyPrintTo(Serial);
 #endif
 
@@ -717,16 +693,12 @@ bool saveFileFSConfigFile()
   DynamicJsonDocument json(1024);
 #else
   DynamicJsonBuffer jsonBuffer;
-  JsonObject& json = jsonBuffer.createObject();
+  JsonObject &json = jsonBuffer.createObject();
 #endif
 
   json["readPhInterval"] = readPhInterval;
-  json["readTempInterval"]   = readTempInterval;
-  json["blynk_token"]  = blynk_token;
-
-  json["mqtt_server"] = mqtt_server;
-  json["mqtt_port"]   = mqtt_port;
-  json["feedInterval"]   = feedInterval;
+  json["readTempInterval"] = readTempInterval;
+  json["feedInterval"] = feedInterval;
 
   File configFile = FileFS.open(configFileName, "w");
 
@@ -738,26 +710,26 @@ bool saveFileFSConfigFile()
   }
 
 #if (ARDUINOJSON_VERSION_MAJOR >= 6)
-  //serializeJson(json, Serial);
+  // serializeJson(json, Serial);
   serializeJsonPretty(json, Serial);
   // Write data to file and close it
   serializeJson(json, configFile);
 #else
-  //json.printTo(Serial);
+  // json.printTo(Serial);
   json.prettyPrintTo(Serial);
   // Write data to file and close it
   json.printTo(configFile);
 #endif
 
   configFile.close();
-  //end save
+  // end save
 
   return true;
 }
 
 void check_WiFi()
 {
-  if ( (WiFi.status() != WL_CONNECTED) )
+  if ((WiFi.status() != WL_CONNECTED))
   {
     Serial.println(F("\nWiFi lost. Call connectMultiWiFi in loop"));
     connectMultiWiFi();
@@ -766,11 +738,11 @@ void check_WiFi()
 
 void check_status()
 {
-  static ulong checkwifi_timeout    = 0;
+  static ulong checkwifi_timeout = 0;
 
   static ulong current_millis;
 
-#define WIFICHECK_INTERVAL    5000L
+#define WIFICHECK_INTERVAL 5000L
 
   current_millis = millis();
 
@@ -782,13 +754,13 @@ void check_status()
   }
 }
 
-int calcChecksum(uint8_t* address, uint16_t sizeToCalc)
+int calcChecksum(uint8_t *address, uint16_t sizeToCalc)
 {
   uint16_t checkSum = 0;
 
   for (uint16_t index = 0; index < sizeToCalc; index++)
   {
-    checkSum += * ( ( (byte*) address ) + index);
+    checkSum += *(((byte *)address) + index);
   }
 
   return checkSum;
@@ -799,24 +771,24 @@ bool loadConfigData()
   File file = FileFS.open(CONFIG_FILENAME, "r");
   LOGERROR(F("LoadWiFiCfgFile "));
 
-  memset((void *) &WM_config,       0, sizeof(WM_config));
+  memset((void *)&WM_config, 0, sizeof(WM_config));
 
   // New in v1.4.0
-  memset((void *) &WM_STA_IPconfig, 0, sizeof(WM_STA_IPconfig));
+  memset((void *)&WM_STA_IPconfig, 0, sizeof(WM_STA_IPconfig));
   //////
 
   if (file)
   {
-    file.readBytes((char *) &WM_config,   sizeof(WM_config));
+    file.readBytes((char *)&WM_config, sizeof(WM_config));
 
     // New in v1.4.0
-    file.readBytes((char *) &WM_STA_IPconfig, sizeof(WM_STA_IPconfig));
+    file.readBytes((char *)&WM_STA_IPconfig, sizeof(WM_STA_IPconfig));
     //////
 
     file.close();
     LOGERROR(F("OK"));
 
-    if ( WM_config.checksum != calcChecksum( (uint8_t*) &WM_config, sizeof(WM_config) - sizeof(WM_config.checksum) ) )
+    if (WM_config.checksum != calcChecksum((uint8_t *)&WM_config, sizeof(WM_config) - sizeof(WM_config.checksum)))
     {
       LOGERROR(F("WM_config checksum wrong"));
 
@@ -844,10 +816,10 @@ void saveConfigData()
 
   if (file)
   {
-    file.write((uint8_t*) &WM_config,   sizeof(WM_config));
+    file.write((uint8_t *)&WM_config, sizeof(WM_config));
 
     // New in v1.4.0
-    file.write((uint8_t*) &WM_STA_IPconfig, sizeof(WM_STA_IPconfig));
+    file.write((uint8_t *)&WM_STA_IPconfig, sizeof(WM_STA_IPconfig));
     //////
 
     file.close();
@@ -882,34 +854,34 @@ void showOnLcd()
 
 void sendGETRequest(uint16_t index)
 {
-	static bool requestOpenResult;
+  static bool requestOpenResult;
 
-	reqCount[index]--;
-	readySend[index] = false;
+  reqCount[index]--;
+  readySend[index] = false;
 
-	requestOpenResult = request[index].open("GET", addreses[index][reqCount[index]]);
+  requestOpenResult = request[index].open("GET", addreses[index][reqCount[index]]);
 
-	if (requestOpenResult)
-	{
-		// Only send() if open() returns true, or crash
-		Serial.print("\nSending request: ");
-		request[index].send();
-	}
-	else
-	{
-		Serial.print("\nCan't send bad request : ");
-	}
+  if (requestOpenResult)
+  {
+    // Only send() if open() returns true, or crash
+    Serial.print("\nSending request: ");
+    request[index].send();
+  }
+  else
+  {
+    Serial.print("\nCan't send bad request : ");
+  }
 
-	Serial.println(addreses[index][reqCount[index]]);
+  Serial.println(addreses[index][reqCount[index]]);
 }
 
 void sendPOSTRequest(uint16_t index)
 {
-	static bool requestOpenResult;
+  static bool requestOpenResult;
 
-	reqCount[index]--;
-	readySend[index] = false;
-  
+  reqCount[index]--;
+  readySend[index] = false;
+
   requestOpenResult = request[index].open("POST", addreses[index][reqCount[index]]);
 
   if (requestOpenResult)
@@ -920,19 +892,19 @@ void sendPOSTRequest(uint16_t index)
   }
   else
   {
-		Serial.print("\nCan't send bad request : ");
-	}
+    Serial.print("\nCan't send bad request : ");
+  }
 
-	Serial.println(addreses[index][reqCount[index]]);
+  Serial.println(addreses[index][reqCount[index]]);
 }
 
 void sendPUTRequest(uint16_t index)
 {
-	static bool requestOpenResult;
+  static bool requestOpenResult;
 
-	reqCount[index]--;
-	readySend[index] = false;
-  
+  reqCount[index]--;
+  readySend[index] = false;
+
   requestOpenResult = request[index].open("PUT", addreses[index][reqCount[index]]);
 
   if (requestOpenResult)
@@ -943,102 +915,108 @@ void sendPUTRequest(uint16_t index)
   }
   else
   {
-		Serial.print("\nCan't send bad request : ");
-	}
+    Serial.print("\nCan't send bad request : ");
+  }
 
-	Serial.println(addreses[index][reqCount[index]]);
+  Serial.println(addreses[index][reqCount[index]]);
 }
 
 void sendRequest0()
 {
-	sendPOSTRequest(0);
+  sendPOSTRequest(0);
 }
 
 void sendRequest1()
 {
-	sendPOSTRequest(1);
+  sendPOSTRequest(1);
 }
 
 void sendRequest2()
 {
-	sendGETRequest(2);
+  sendGETRequest(2);
 }
 
 void sendRequest3()
 {
-	sendPUTRequest(3);
+  sendPUTRequest(3);
+}
+
+void sendRequest4()
+{
+  sendPOSTRequest(4);
 }
 
 void sendRequests()
 {
   // Setting all requests to have only 1 site
-	/*for (int index = 0; index < NUM_DIFFERENT_SITES; index++)
-	{
-		reqCount[index] = 1;
-	}*/
+  /*for (int index = 0; index < NUM_DIFFERENT_SITES; index++)
+  {
+    reqCount[index] = 1;
+  }*/
 
-	reqCount[0] = NUM_ENTRIES_SITE_0;
-	reqCount[1] = NUM_ENTRIES_SITE_1;
+  reqCount[0] = NUM_ENTRIES_SITE_0;
+  reqCount[1] = NUM_ENTRIES_SITE_1;
   reqCount[2] = NUM_ENTRIES_SITE_2;
   reqCount[3] = NUM_ENTRIES_SITE_3;
+  reqCount[4] = NUM_ENTRIES_SITE_4;
 }
 
 void requestCB0(void *optParm, AsyncHTTPSRequest *thisRequest, int readyState)
 {
-	(void) optParm;
+  (void)optParm;
 
-	if (readyState == readyStateDone)
-	{
-		AHTTPS_LOGDEBUG0(F("\n**************************************\n"));
-		AHTTPS_LOGDEBUG1(F("Response Code = "), thisRequest->responseHTTPString());
+  if (readyState == readyStateDone)
+  {
+    AHTTPS_LOGDEBUG0(F("\n**************************************\n"));
+    AHTTPS_LOGDEBUG1(F("Response Code = "), thisRequest->responseHTTPString());
 
-		if (thisRequest->responseHTTPcode() == 200)
-		{
-			Serial.println(F("\n**************************************"));
-			Serial.println(thisRequest->responseText());
-			Serial.println(F("**************************************"));
-		}
+    if (thisRequest->responseHTTPcode() == 200)
+    {
+      Serial.println(F("\n**************************************"));
+      Serial.println(thisRequest->responseText());
+      Serial.println(F("**************************************"));
+    }
 
-		thisRequest->setDebug(false);
-		readySend[0] = true;
-	}
+    thisRequest->setDebug(false);
+    readySend[0] = true;
+  }
 }
 
 void requestCB1(void *optParm, AsyncHTTPSRequest *thisRequest, int readyState)
 {
-	(void) optParm;
+  (void)optParm;
 
-	if (readyState == readyStateDone)
-	{
-		AHTTPS_LOGDEBUG0(F("\n**************************************\n"));
-		AHTTPS_LOGDEBUG1(F("Response Code = "), thisRequest->responseHTTPString());
+  if (readyState == readyStateDone)
+  {
+    AHTTPS_LOGDEBUG0(F("\n**************************************\n"));
+    AHTTPS_LOGDEBUG1(F("Response Code = "), thisRequest->responseHTTPString());
 
-		if (thisRequest->responseHTTPcode() == 200)
-		{
-			Serial.println(F("\n**************************************"));
-			Serial.println(thisRequest->responseText());
-			Serial.println(F("**************************************"));
-		}
+    if (thisRequest->responseHTTPcode() == 200)
+    {
+      Serial.println(F("\n**************************************"));
+      Serial.println(thisRequest->responseText());
+      Serial.println(F("**************************************"));
+    }
 
-		thisRequest->setDebug(false);
-		readySend[1] = true;
-	}
+    thisRequest->setDebug(false);
+    readySend[1] = true;
+  }
 }
 
 void requestCB2(void *optParm, AsyncHTTPSRequest *thisRequest, int readyState)
 {
-	(void) optParm;
+  (void)optParm;
 
-	if (readyState == readyStateDone)
-	{
-		AHTTPS_LOGDEBUG0(F("\n**************************************\n"));
-		AHTTPS_LOGDEBUG1(F("Response Code = "), thisRequest->responseHTTPString());
+  if (readyState == readyStateDone)
+  {
+    AHTTPS_LOGDEBUG0(F("\n**************************************\n"));
+    AHTTPS_LOGDEBUG1(F("Response Code = "), thisRequest->responseHTTPString());
 
-		if (thisRequest->responseHTTPcode() == 200)
-		{
-      unsigned long pre_feedInterval,pre_readPhInterval,pre_readTempInterval; // save previous values
+    if (thisRequest->responseHTTPcode() == 200)
+    {
+      unsigned long pre_feedInterval, pre_readPhInterval, pre_readTempInterval; // save previous values
       String responseText = thisRequest->responseText();
-			Serial.println(F("\n**************************************"));
+      Serial.println(F("\n**************************************"));
       Serial.println(responseText);
       Serial.println(F("**************************************"));
       if (responseText == "null")
@@ -1062,11 +1040,11 @@ void requestCB2(void *optParm, AsyncHTTPSRequest *thisRequest, int readyState)
           if (jsonResponse["readPhInterval"])
           {
             pre_readPhInterval = atoi(readPhInterval); // save previous feedInterval
-            //sprintf(pre_readPhInterval, "%s", readPhInterval);
+            // sprintf(pre_readPhInterval, "%s", readPhInterval);
             int readPhInterval_buffer = jsonResponse["readPhInterval"];
-            //readPhInterval_buffer = readPhInterval_buffer * 1000; // Change from seconds to miliseconds
+            // readPhInterval_buffer = readPhInterval_buffer * 1000; // Change from seconds to miliseconds
             sprintf(readPhInterval, "%d", readPhInterval_buffer);
-            //sprintf(millis_char,"%lu", millis_ulong);
+            // sprintf(millis_char,"%lu", millis_ulong);
             Serial.print("Set readPhInterval to ");
             Serial.println(readPhInterval);
           }
@@ -1074,7 +1052,7 @@ void requestCB2(void *optParm, AsyncHTTPSRequest *thisRequest, int readyState)
           {
             pre_readTempInterval = atoi(readTempInterval); // save previous feedInterval
             unsigned long readTempInterval_buffer = jsonResponse["readTempInterval"];
-            //readTempInterval_buffer = readTempInterval_buffer * 1000; // Change from seconds to miliseconds
+            // readTempInterval_buffer = readTempInterval_buffer * 1000; // Change from seconds to miliseconds
             sprintf(readTempInterval, "%d", readTempInterval_buffer);
             Serial.print("Set readTempInterval to ");
             Serial.println(readTempInterval);
@@ -1083,7 +1061,7 @@ void requestCB2(void *optParm, AsyncHTTPSRequest *thisRequest, int readyState)
           {
             pre_feedInterval = atoi(feedInterval); // save previous feedInterval
             unsigned long feedInterval_buffer = jsonResponse["feedInterval"];
-            //feedInterval_buffer = feedInterval_buffer * 1000; // Change from seconds to miliseconds
+            // feedInterval_buffer = feedInterval_buffer * 1000; // Change from seconds to miliseconds
             sprintf(feedInterval, "%d", feedInterval_buffer);
             Serial.print("Set feedInterval to ");
             Serial.println(feedInterval);
@@ -1098,7 +1076,7 @@ void requestCB2(void *optParm, AsyncHTTPSRequest *thisRequest, int readyState)
     }
 
     thisRequest->setDebug(false);
-		readySend[2] = true;
+    readySend[2] = true;
 
     if (noConfigDetected == true)
     {
@@ -1106,7 +1084,6 @@ void requestCB2(void *optParm, AsyncHTTPSRequest *thisRequest, int readyState)
       sendJson.clear(); // release memory used by JsonObject
       sendJson["readPhInterval"] = readPhInterval;
       sendJson["readTempInterval"] = readTempInterval;
-      sendJson["blynk_token"] = blynk_token;
       sendJson["feedInterval"] = feedInterval;
       serializeJson(sendJson, strSendJson);
       if (readySend[3] && WiFi.status() == WL_CONNECTED) // ready to send and wifi connected
@@ -1121,23 +1098,44 @@ void requestCB2(void *optParm, AsyncHTTPSRequest *thisRequest, int readyState)
 
 void requestCB3(void *optParm, AsyncHTTPSRequest *thisRequest, int readyState)
 {
-	(void) optParm;
+  (void)optParm;
 
-	if (readyState == readyStateDone)
-	{
-		AHTTPS_LOGDEBUG0(F("\n**************************************\n"));
-		AHTTPS_LOGDEBUG1(F("Response Code = "), thisRequest->responseHTTPString());
+  if (readyState == readyStateDone)
+  {
+    AHTTPS_LOGDEBUG0(F("\n**************************************\n"));
+    AHTTPS_LOGDEBUG1(F("Response Code = "), thisRequest->responseHTTPString());
 
-		if (thisRequest->responseHTTPcode() == 200)
-		{
-			Serial.println(F("\n**************************************"));
-			Serial.println(thisRequest->responseText());
-			Serial.println(F("**************************************"));
-		}
+    if (thisRequest->responseHTTPcode() == 200)
+    {
+      Serial.println(F("\n**************************************"));
+      Serial.println(thisRequest->responseText());
+      Serial.println(F("**************************************"));
+    }
 
-		thisRequest->setDebug(false);
-		readySend[3] = true;
-	}
+    thisRequest->setDebug(false);
+    readySend[3] = true;
+  }
+}
+
+void requestCB4(void *optParm, AsyncHTTPSRequest *thisRequest, int readyState)
+{
+  (void)optParm;
+
+  if (readyState == readyStateDone)
+  {
+    AHTTPS_LOGDEBUG0(F("\n**************************************\n"));
+    AHTTPS_LOGDEBUG1(F("Response Code = "), thisRequest->responseHTTPString());
+
+    if (thisRequest->responseHTTPcode() == 200)
+    {
+      Serial.println(F("\n**************************************"));
+      Serial.println(thisRequest->responseText());
+      Serial.println(F("**************************************"));
+    }
+
+    thisRequest->setDebug(false);
+    readySend[4] = true;
+  }
 }
 
 String getTime()
@@ -1159,13 +1157,12 @@ void setup()
 {
   Serial.begin(115200);
 
-  foodFeed_startMillis = millis();      // initial start time
+  foodFeed_startMillis = millis(); // initial start time
   readTemp_startMillis = millis(); // initial start time
 
   pinMode(motor1pin1, OUTPUT);
   pinMode(motor1pin2, OUTPUT);
   pinMode(32, OUTPUT);
-  pinMode(LEDR, OUTPUT);
   pinMode(topIRpin, INPUT);
   pinMode(buttomIRpin, INPUT);
 
@@ -1175,21 +1172,21 @@ void setup()
   analogWrite(32, 255); // ENA pin`
 
   EEPROM.begin(32); // needed EEPROM.begin to store calibration k in eeprom
-  //ph.begin();
-  //sensors.begin();
-  //ads.setGain(GAIN_ONE);
-  //ads.begin();
+  ph.begin();
+  sensors.begin();
+  ads.setGain(GAIN_ONE);
+  ads.begin();
 
   // LCD Setup
   phost = &host;
   /* Init HW Hal */
   App_Common_Init(&host);
 
-  
-	// put your setup code here, to run once:
+  // put your setup code here, to run once:
   Serial.begin(115200);
 
-  while (!Serial && millis() < 5000);
+  while (!Serial && millis() < 5000)
+    ;
 
   delay(200);
 
@@ -1260,12 +1257,8 @@ void setup()
   // After connecting, parameter.getValue() will get you the configured value
   // id/name placeholder/prompt default length
   ESPAsync_WMParameter custom_readPhInterval("readPhInterval", "readPhInterval", readPhInterval, Read_PH_INTERVAL_LEN + 1);
-  ESPAsync_WMParameter custom_readTempInterval  ("readTempInterval",   "readTempInterval",   readTempInterval,   Read_TEMP_INTERVAL_LEN + 1);
-  ESPAsync_WMParameter custom_blynk_token ("blynk_token",  "blynk_token",  blynk_token,  BLYNK_TOKEN_LEN + 1 );
-
-  ESPAsync_WMParameter custom_mqtt_server   ("mqtt_server", "mqtt_server", mqtt_server, MQTT_SERVER_MAX_LEN + 1);
-  ESPAsync_WMParameter custom_mqtt_port     ("mqtt_port",   "mqtt_port",   mqtt_port,   MQTT_SERVER_PORT_LEN + 1);
-  ESPAsync_WMParameter custom_feedInterval  ("feedInterval",   "feedInterval",   feedInterval,   FEED_INTERVAL_LEN + 1);
+  ESPAsync_WMParameter custom_readTempInterval("readTempInterval", "readTempInterval", readTempInterval, Read_TEMP_INTERVAL_LEN + 1);
+  ESPAsync_WMParameter custom_feedInterval("feedInterval", "feedInterval", feedInterval, FEED_INTERVAL_LEN + 1);
 
   unsigned long startedAt = millis();
 
@@ -1274,14 +1267,14 @@ void setup()
   initSTAIPConfigStruct(WM_STA_IPconfig);
   //////
 
-  //Local intialization. Once its business is done, there is no need to keep it around
-  // Use this to default DHCP hostname to ESP8266-XXXXXX or ESP32-XXXXXX
-  //ESPAsync_WiFiManager ESPAsync_wifiManager(&webServer, &dnsServer);
-  // Use this to personalize DHCP hostname (RFC952 conformed)
+  // Local intialization. Once its business is done, there is no need to keep it around
+  //  Use this to default DHCP hostname to ESP8266-XXXXXX or ESP32-XXXXXX
+  // ESPAsync_WiFiManager ESPAsync_wifiManager(&webServer, &dnsServer);
+  //  Use this to personalize DHCP hostname (RFC952 conformed)
   AsyncWebServer webServer(HTTP_PORT);
 
-  //ESPAsync_WiFiManager ESPAsync_wifiManager(&webServer, &dnsServer, "AutoConnectAP");
-#if ( USING_ESP32_S2 || USING_ESP32_C3 )
+  // ESPAsync_WiFiManager ESPAsync_wifiManager(&webServer, &dnsServer, "AutoConnectAP");
+#if (USING_ESP32_S2 || USING_ESP32_C3)
   ESPAsync_WiFiManager ESPAsync_wifiManager(&webServer, NULL, "AutoConnectAP");
 #else
   AsyncDNSServer dnsServer;
@@ -1289,26 +1282,22 @@ void setup()
   ESPAsync_WiFiManager ESPAsync_wifiManager(&webServer, &dnsServer, "AutoConnectAP");
 #endif
 
-  //set config save notify callback
+  // set config save notify callback
   ESPAsync_wifiManager.setSaveConfigCallback(saveConfigCallback);
 
-  //add all your parameters here
+  // add all your parameters here
   ESPAsync_wifiManager.addParameter(&custom_readPhInterval);
   ESPAsync_wifiManager.addParameter(&custom_readTempInterval);
-  ESPAsync_wifiManager.addParameter(&custom_blynk_token);
-
-  ESPAsync_wifiManager.addParameter(&custom_mqtt_server);
-  ESPAsync_wifiManager.addParameter(&custom_mqtt_port);
   ESPAsync_wifiManager.addParameter(&custom_feedInterval);
 
-  //ESPAsync_wifiManager.setDebugOutput(true);
+  // ESPAsync_wifiManager.setDebugOutput(true);
 
-  //reset settings - for testing
-  //ESPAsync_wifiManager.resetSettings();
+  // reset settings - for testing
+  // ESPAsync_wifiManager.resetSettings();
 
 #if USE_CUSTOM_AP_IP
-  //set custom ip for portal
-  // New in v1.4.0
+  // set custom ip for portal
+  //  New in v1.4.0
   ESPAsync_wifiManager.setAPStaticIPConfig(WM_AP_IPconfig);
   //////
 #endif
@@ -1338,7 +1327,7 @@ void setup()
   Router_SSID = ESPAsync_wifiManager.WiFi_SSID();
   Router_Pass = ESPAsync_wifiManager.WiFi_Pass();
 
-  //Remove this line if you do not want to see WiFi password printed
+  // Remove this line if you do not want to see WiFi password printed
   Serial.print(F("Stored: SSID = "));
   Serial.print(Router_SSID);
   Serial.print(F(", Pass = "));
@@ -1347,22 +1336,24 @@ void setup()
   // SSID and PW for Config Portal
   String AP_SSID = "ESP_" + chipID;
   String AP_PASS = "ESP_" + chipID;
-  //String AP_PASS = "your password";
+  // String AP_PASS = "your password";
 
   bool configDataLoaded = false;
 
   // From v1.1.0, Don't permit NULL password
-  if ( (Router_SSID != "") && (Router_Pass != "") )
+  if ((Router_SSID != "") && (Router_Pass != ""))
   {
     LOGERROR3(F("* Add SSID = "), Router_SSID, F(", PW = "), Router_Pass);
     wifiMulti.addAP(Router_SSID.c_str(), Router_Pass.c_str());
 
-    //ESPAsync_wifiManager.setConfigPortalTimeout(0); //If no access point name has been previously entered disable timeout.
+    // ESPAsync_wifiManager.setConfigPortalTimeout(0); //If no access point name has been previously entered disable timeout.
     Serial.println(F("Got ESP Self-Stored Credentials. Timeout 120s for Config Portal"));
-  } else if  (loadConfigData()) {
+  }
+  else if (loadConfigData())
+  {
     configDataLoaded = true;
 
-    //ESPAsync_wifiManager.setConfigPortalTimeout(0); //If no access point name has been previously entered disable timeout.
+    // ESPAsync_wifiManager.setConfigPortalTimeout(0); //If no access point name has been previously entered disable timeout.
     Serial.println(F("Got stored Credentials. Timeout 120s for Config Portal"));
   }
   else
@@ -1396,10 +1387,10 @@ void setup()
     Serial.print(F(", PWD = "));
     Serial.println(AP_PASS);
 
-    //sets timeout in seconds until configuration portal gets turned off.
-    //If not specified device will remain in configuration mode until
-    //switched off via webserver or device is restarted.
-    //ESPAsync_wifiManager.setConfigPortalTimeout(600);
+    // sets timeout in seconds until configuration portal gets turned off.
+    // If not specified device will remain in configuration mode until
+    // switched off via webserver or device is restarted.
+    // ESPAsync_wifiManager.setConfigPortalTimeout(600);
 
 #if DISPLAY_STORED_CREDENTIALS_IN_CP
     // New. Update Credentials, got from loadConfigData(), to display on CP
@@ -1408,7 +1399,7 @@ void setup()
 #endif
 
     // Starts an access point
-    if (!ESPAsync_wifiManager.startConfigPortal((const char *) AP_SSID.c_str(), AP_PASS.c_str()))
+    if (!ESPAsync_wifiManager.startConfigPortal((const char *)AP_SSID.c_str(), AP_PASS.c_str()))
       Serial.println(F("Not connected to WiFi but continuing anyway."));
     else
     {
@@ -1421,7 +1412,7 @@ void setup()
     for (uint8_t i = 0; i < NUM_WIFI_CREDENTIALS; i++)
     {
       String tempSSID = ESPAsync_wifiManager.getSSID(i);
-      String tempPW   = ESPAsync_wifiManager.getPW(i);
+      String tempPW = ESPAsync_wifiManager.getPW(i);
 
       if (strlen(tempSSID.c_str()) < sizeof(WM_config.WiFi_Creds[i].wifi_ssid) - 1)
         strcpy(WM_config.WiFi_Creds[i].wifi_ssid, tempSSID.c_str());
@@ -1434,10 +1425,9 @@ void setup()
         strncpy(WM_config.WiFi_Creds[i].wifi_pw, tempPW.c_str(), sizeof(WM_config.WiFi_Creds[i].wifi_pw) - 1);
 
       // Don't permit NULL SSID and password len < MIN_AP_PASSWORD_SIZE (8)
-      if ( (String(WM_config.WiFi_Creds[i].wifi_ssid) != "")
-           && (strlen(WM_config.WiFi_Creds[i].wifi_pw) >= MIN_AP_PASSWORD_SIZE) )
+      if ((String(WM_config.WiFi_Creds[i].wifi_ssid) != "") && (strlen(WM_config.WiFi_Creds[i].wifi_pw) >= MIN_AP_PASSWORD_SIZE))
       {
-        LOGERROR3(F("* Add SSID = "), WM_config.WiFi_Creds[i].wifi_ssid, F(", PW = "), WM_config.WiFi_Creds[i].wifi_pw );
+        LOGERROR3(F("* Add SSID = "), WM_config.WiFi_Creds[i].wifi_ssid, F(", PW = "), WM_config.WiFi_Creds[i].wifi_pw);
         wifiMulti.addAP(WM_config.WiFi_Creds[i].wifi_ssid, WM_config.WiFi_Creds[i].wifi_pw);
       }
     }
@@ -1460,15 +1450,14 @@ void setup()
     for (uint8_t i = 0; i < NUM_WIFI_CREDENTIALS; i++)
     {
       // Don't permit NULL SSID and password len < MIN_AP_PASSWORD_SIZE (8)
-      if ( (String(WM_config.WiFi_Creds[i].wifi_ssid) != "")
-           && (strlen(WM_config.WiFi_Creds[i].wifi_pw) >= MIN_AP_PASSWORD_SIZE) )
+      if ((String(WM_config.WiFi_Creds[i].wifi_ssid) != "") && (strlen(WM_config.WiFi_Creds[i].wifi_pw) >= MIN_AP_PASSWORD_SIZE))
       {
-        LOGERROR3(F("* Add SSID = "), WM_config.WiFi_Creds[i].wifi_ssid, F(", PW = "), WM_config.WiFi_Creds[i].wifi_pw );
+        LOGERROR3(F("* Add SSID = "), WM_config.WiFi_Creds[i].wifi_ssid, F(", PW = "), WM_config.WiFi_Creds[i].wifi_pw);
         wifiMulti.addAP(WM_config.WiFi_Creds[i].wifi_ssid, WM_config.WiFi_Creds[i].wifi_pw);
       }
     }
 
-    if ( WiFi.status() != WL_CONNECTED )
+    if (WiFi.status() != WL_CONNECTED)
     {
       Serial.println(F("ConnectMultiWiFi in setup"));
 
@@ -1477,7 +1466,7 @@ void setup()
   }
 
   Serial.print(F("After waiting "));
-  Serial.print((float) (millis() - startedAt) / 1000);
+  Serial.print((float)(millis() - startedAt) / 1000);
   Serial.print(F(" secs more in setup(), connection result is "));
 
   if (WiFi.status() == WL_CONNECTED)
@@ -1490,32 +1479,28 @@ void setup()
     Serial.println(ESPAsync_wifiManager.getStatus(WiFi.status()));
   }
 
-  //read updated parameters
+  // read updated parameters
   strncpy(readPhInterval, custom_readPhInterval.getValue(), sizeof(readPhInterval));
-  strncpy(readTempInterval,   custom_readTempInterval.getValue(),   sizeof(readTempInterval));
-  strncpy(blynk_token,  custom_blynk_token.getValue(),  sizeof(blynk_token));
+  strncpy(readTempInterval, custom_readTempInterval.getValue(), sizeof(readTempInterval));
+  strncpy(feedInterval, custom_feedInterval.getValue(), sizeof(feedInterval));
 
-  strncpy(mqtt_server, custom_mqtt_server.getValue(), sizeof(mqtt_server));
-  strncpy(mqtt_port, custom_mqtt_port.getValue(),     sizeof(mqtt_port));
-  strncpy(feedInterval, custom_feedInterval.getValue(),     sizeof(feedInterval));
-
-  //save the custom parameters to FS
+  // save the custom parameters to FS
   if (shouldSaveConfig)
   {
     saveFileFSConfigFile();
   }
 
-	for (int index = 0; index < NUM_DIFFERENT_SITES; index++)
-	{
-		request[index].setDebug(false);
+  for (int index = 0; index < NUM_DIFFERENT_SITES; index++)
+  {
+    request[index].setDebug(false);
 
-		request[index].onReadyStateChange(requestCB[index]);
-	}
+    request[index].onReadyStateChange(requestCB[index]);
+  }
 
   // Setting up NTP
   int ntpArrayIndex = 0;
   String strTime = "Failed to obtain time"; // default string
-  
+
   if (WiFi.status() != WL_CONNECTED)
   {
     Serial.println("No Wifi. Time will not be obtain.");
@@ -1552,57 +1537,53 @@ void loop()
 
   currentMillis = millis();
 
-   if (currentMillis - readPh_startMillis >= atoi(readPhInterval))
+  if (currentMillis - readPh_startMillis >= atoi(readPhInterval))
   {
-    // temperature = readTemperature();                     //needed for temperature compensation below
-    // voltage = analogRead(PH_PIN) / ESPADC * ESPVOLTAGE;  // read the voltage
-    // Serial.println(voltage);
-    // phValue = ph.readPH(voltage, temperature);  // convert voltage to pH with temperature compensation
-    // phValue = random(10);
+    readPh_startMillis = currentMillis;
     phValue = map(analogRead(PH_PIN), 0, 4096, 0, 14);
-    //phValue = random(6,8);
+    // phValue = random(6,8); // random data for testing
     Serial.print("pH:");
     Serial.println(phValue, 4);
-    readPh_startMillis = currentMillis;
-    showOnLcd();
-    strSendJson = ""; // clear string
-    sendJson.clear();   // release memory used by JsonObject
-    if (!timeNotObtained) // Not able to configure NTP
+    showOnLcd();          // show ph on LCD
+    strSendJson = "";     // clear string
+    sendJson.clear();     // release memory used by JsonObject
+    if (!timeNotObtained) // if able to configure NTP
     {
       sendJson["time"] = getTime();
+      sendJson["value"] = phValue;
+      serializeJson(sendJson, strSendJson);
+      if (readySend[0]) // ready to send
+      {
+        reqCount[0] = NUM_ENTRIES_SITE_0;
+        sendRequestCB[0]();
+      }
     }
-    sendJson["value"] = phValue;
-    serializeJson(sendJson, strSendJson);
-    if (readySend[0] && !timeNotObtained) // ready to send and time is configured correctly
-		{
-      reqCount[0] = NUM_ENTRIES_SITE_0;
-			sendRequestCB[0]();
-		}
   }
 
   if (currentMillis - readTemp_startMillis >= atoi(readTempInterval))
   {
-    temperature = random(24,27);
-    //temperature = readTemperature(); // read your temperature sensor to execute temperature compensation
+    readTemp_startMillis = currentMillis;
+    // temperature = random(24,27);  // random data for testing
+    temperature = readTemperature(); // read your temperature sensor
     Serial.print("Temperature:");
     Serial.print(temperature, 1);
     Serial.println("^C");
-    readTemp_startMillis = currentMillis;
-    showOnLcd();
-    strSendJson = ""; // clear string
-    sendJson.clear();   // release memory used by JsonObject
-    if (!timeNotObtained) // Not able to configure NTP
+    showOnLcd();          // show temperature on LCD
+    strSendJson = "";     // clear string
+    sendJson.clear();     // release memory used by JsonObject
+    if (!timeNotObtained) // if able to configure NTP
     {
-      sendJson["time"] = getTime();
+      sendJson["time"] = getTime();         // store current time into json
+      sendJson["value"] = temperature;      // store temperauture value into json
+      serializeJson(sendJson, strSendJson); // transfer json into String for sending
+      if (readySend[1])                     // ready to send
+      {
+        reqCount[1] = NUM_ENTRIES_SITE_1;
+        sendRequestCB[1]();
+      }
     }
-    sendJson["value"] = temperature;
-    serializeJson(sendJson, strSendJson);
-    if (readySend[1] && !timeNotObtained) // ready to send and time is configured correctly
-		{
-      reqCount[1] = NUM_ENTRIES_SITE_1;
-			sendRequestCB[1]();
-		}
   }
+
   if (currentMillis - fetchConfig_startMillis >= fetchConfigInterval)
   {
     fetchConfig_startMillis = currentMillis;
@@ -1613,29 +1594,45 @@ void loop()
     }
   }
 
-   // Check food left
+  // Check food left
   isFoodLeft = digitalRead(topIRpin); // 1 = no food detected, 0 = food detected
-  
-  if(!isFoodLeft) { // food detected
+
+  if (!isFoodLeft)
+  { // food detected
     noFoodCount = 0;
   }
-  if (currentMillis - noFoodDetect_startMillis >= noFoodDetectInterval){ // detect at 1 second interval
-    if (isFoodLeft) { // if no food left
-    noFoodCount++; // start counter
+  if (currentMillis - noFoodDetect_startMillis >= noFoodDetectInterval)
+  { // detect at 1 second interval
+    if (isFoodLeft)
+    {                // if no food left
+      noFoodCount++; // start counter
     }
     noFoodDetect_startMillis = currentMillis;
   }
-  if (noFoodCount >= 5) { // more than 5 sec of no food detected
-    Serial.println("No Food!!!!!!!!"); // Alert user
+  if (noFoodCount >= 5)
+  {                                    // more than 5 sec of no food detected
+    Serial.println("No Food"); // Alert user
+
+    // Send Error message to firebase (not working)
+    /*strSendJson = "";                // clear string
+    sendJson.clear();                  // release memory used by JsonObject
+    if (!timeNotObtained)              // if able to configure NTP
+    {
+      sendJson["time"] = getTime();                // store current time into json
+      sendJson["message"] = "No Food is detected"; // store temperauture value into json
+      serializeJson(sendJson, strSendJson);        // transfer json into String for sending
+      if (readySend[4])                            // ready to send
+      {
+        reqCount[4] = NUM_ENTRIES_SITE_4;
+        sendRequestCB[4]();
+      }
+    }*/
     noFoodCount = 0; // reset counter
   }
 
   // Feed food
   if (currentMillis - foodFeed_startMillis >= atoi(feedInterval))
   {
-    //turn motor
-    //digitalWrite(motor1pin2, HIGH);
-    
     foodFeed_startMillis = currentMillis;
     foodStuckDetect_startMillis = currentMillis;
     motorTurning_startMillis = currentMillis;
@@ -1643,29 +1640,50 @@ void loop()
     isMotorTurning = true;
   }
   if (isMotorTurning)
+  {
+    Serial.println("Motor Turn!");
+
+    if (currentMillis - motorTurning_startMillis <= motorTurnPeriod) // constantly turning for 5 second
     {
-      //Serial.println("Motor Turn!");
-      
-      if (currentMillis - motorTurning_startMillis <= motorTurnPeriod) // constantly turning for 5 second
-      {
-        digitalWrite(motor1pin2, HIGH);
-      }
-      else
-      {
-        digitalWrite(motor1pin2, LOW);
-        isMotorTurning = false;
-      }
+      digitalWrite(motor1pin2, LOW); // turn motor
     }
+    else
+    {
+      digitalWrite(motor1pin2, HIGH);
+      isMotorTurning = false;
+    }
+  }
   if (isFoodStuckDetectStart)
   {
     isFoodStuck = digitalRead(buttomIRpin); // 1 = stuck, 0 = not stuck
-    if (isFoodStuck) {
-      Serial.println("Food Stuck!!!!!!!!"); // Alert user
+    if (isFoodStuck)
+    {
+      Serial.println("Food Stuck"); // Alert user
+
+      // Send Error message to firebase (not working)
+      /*strSendJson = "";                   // clear string
+      sendJson.clear();                     // release memory used by JsonObject
+      if (!timeNotObtained)                 // if able to configure NTP
+      {
+      sendJson["time"] = getTime();         // store current time into json
+      sendJson["message"] = "Food stuck";   // store temperauture value into json
+      serializeJson(sendJson, strSendJson); // transfer json into String for sending
+      if (readySend[4])                     // ready to send
+      {
+        reqCount[4] = NUM_ENTRIES_SITE_4;
+        sendRequestCB[4]();
+      }
+      }*/
       isFoodStuckDetectStart = false; // reset detection status
-    } else {
-      if (currentMillis - foodStuckDetect_startMillis <= foodStuckDetectPeriod) { // constantly detecting for 5 second
-      isFoodStuck = digitalRead(buttomIRpin); // 1 = stuck, 0 = not stuck
-      } else { // 5 sec passed
+    }
+    else
+    {
+      if (currentMillis - foodStuckDetect_startMillis <= foodStuckDetectPeriod)
+      {                                         // constantly detecting for 5 second
+        isFoodStuck = digitalRead(buttomIRpin); // 1 = stuck, 0 = not stuck
+      }
+      else
+      {                                 // 5 sec passed
         isFoodStuckDetectStart = false; // reset detection status
       }
     }
